@@ -1,6 +1,32 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+def plt_kernel_matrix_one(fig, ax, K, title=None, n_ticks=5,
+                          custom_ticks=True, vmin=None, vmax=None, annotate=False):
+    im = ax.imshow(K, vmin=vmin, vmax=vmax)
+    ax.set_title(title if title is not None else '')
+    fig.colorbar(im, cax=plt_scaled_colobar_ax(ax))
+    # custom ticks
+    if custom_ticks:
+        n = len(K)
+        ticks = list(range(n))
+        ticks_idx = np.rint(np.linspace(
+            1, len(ticks), num=min(n_ticks,    len(ticks)))-1).astype(int)
+        ticks = list(np.array(ticks)[ticks_idx])
+        ax.set_xticks(np.linspace(0, n-1, len(ticks)))
+        ax.set_yticks(np.linspace(0, n-1, len(ticks)))
+        ax.set_xticklabels(ticks)
+        ax.set_yticklabels(ticks)
+    if annotate:
+        for i in range(K.shape[0]):
+            for j in range(K.shape[1]):
+                ax.annotate(f'{K[i,j]:.2f}', xy=(j, i),
+                            horizontalalignment='center',
+                            verticalalignment='center')
+    return fig, ax
+
+
 def plt_scaled_colobar_ax(ax):
     """ Create color bar
             fig.colorbar(im, cax=plt_scaled_colobar_ax(ax)) 
@@ -11,7 +37,13 @@ def plt_scaled_colobar_ax(ax):
     return cax
 
 
-def show_slices(vol, colorbar=True):
+
+def plt_savefig(fig, save_path):
+    fig.tight_layout()
+    fig.savefig(save_path, bbox_inches='tight', dpi=100)
+
+
+def plt_slices(vol, colorbar=True):
     """RAS coordinate: https://www.fieldtriptoolbox.org/faq/coordsys/
     
     (x,y,z)
@@ -37,15 +69,3 @@ def show_slices(vol, colorbar=True):
 
     return fig, axs
 
-
-def normalize_dmoyer(vol):
-    """ Normalize volume `vol` by clipping extreme values 
-        such that intensities roughly lies in the [0, 1] range 
-        `vol_max` and `vol_denom` different to preserve dynamic range
-    """
-    vol = np.copy(vol)
-    vol_max = np.quantile(vol,0.995)
-    vol_denom = np.quantile(vol,0.99)
-    vol = np.clip(vol, 0, vol_max)
-    vol /= vol_denom
-    return vol
