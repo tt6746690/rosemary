@@ -23,3 +23,19 @@ def torch_configure_cuda(gpu_id):
         raise AssertionError(f'GPU not available!')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return device
+
+def input_grad(f, model, x):
+    # Computes Gradient of `f(model, x)`` w.r.t. `x`
+    # 
+    with torch.enable_grad():
+        model.zero_grad()
+        x = x.detach()          # Creates a tensor with shared storage
+        x.requires_grad = True  # Add input to computation graph
+
+        L = f(model, x)
+        L.backward()            # Computes gradient
+
+        g = x.grad.detach()
+        model.zero_grad()
+
+    return g
