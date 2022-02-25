@@ -24,7 +24,7 @@ def torch_configure_cuda(gpu_id):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return device
 
-def input_grad(f, model, x):
+def torch_input_grad(f, model, x):
     # Computes Gradient of `f(model, x)`` w.r.t. `x`
     # 
     with torch.enable_grad():
