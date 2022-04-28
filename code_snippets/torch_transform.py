@@ -1,22 +1,24 @@
 import torch
 
 def _blend(img1, img2, ratio):
-    # Alpha blending
-    # https://github.com/pytorch/vision/blob/36daee3f8f0d56eb869d7d5c2c4362bf1dc9a394/torchvision/transforms/functional_tensor.py#L557
+    """ Alpha blending """
+    ratio = float(ratio)
     bound = 1.0 if img1.is_floating_point() else 255.0
     return (ratio * img1 + (1.0 - ratio) * img2).clamp(0, bound).to(img1.dtype)
 
 
-def adjust_brightness(im, brightness_factor):
-    # Adjust brightness for grayscale tensor
-    # https://github.com/pytorch/vision/blob/36daee3f8f0d56eb869d7d5c2c4362bf1dc9a394/torchvision/transforms/functional_tensor.py#L258
-    return _blend(im, torch.zeros_like(im), brightness_factor)
+def adjust_brightness(img, brightness_factor):
+    """Adjust brightness for grayscale tensor
+    https://github.com/pytorch/vision/blob/36daee3f8f0d56eb869d7d5c2c4362bf1dc9a394/torchvision/transforms/functional_tensor.py#L258 """
+    return _blend(img, torch.zeros_like(img), brightness_factor)
 
 
 def adjust_contrast(im, contrast_factor):
-    # Adjust contrast for grayscale tensor
-    # https://github.com/pytorch/vision/blob/master/torchvision/transforms/functional_tensor.py#L258
-    return _blend(im, im, contrast_factor)
+    """Adjust contrast for grayscale tensor
+    https://github.com/pytorch/vision/blob/e0467c64e337c0d1140a9f9a70a413b7268231f4/torchvision/transforms/functional_tensor.py#L176 """
+    dtype = im.dtype if torch.is_floating_point(im) else torch.float32
+    mean = torch.mean(im.to(dtype), dim=(-3, -2, -1), keepdim=True)
+    return _blend(im, mean, contrast_factor)
 
 
 class GrayscaleJitter(object):
