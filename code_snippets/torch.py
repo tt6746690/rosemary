@@ -11,9 +11,9 @@ def torch_set_random_seed(seed):
 
 
 def torch_configure_cuda(gpu_id):
-    # some bug in `DataLoader` spawn ~18 unnecessary threads
+    # some bug in `DataLoader` spawn ~16 unnecessary threads
     # that cogs up every single CPU and slows downs data loading
-    # Set number of threads to 1 to side-step this problem
+    # Set number of threads to 1 to side-step this problem.
     torch.set_num_threads(1)
 
     torch.backends.cudnn.benchmark = True
