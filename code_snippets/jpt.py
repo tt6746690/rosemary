@@ -103,6 +103,9 @@ def jpt_check_memusage(globals_, dir_, getsize_opt='pympler', in_gb=True):
 
 
 def jpt_parse_args(parser, args=None):
+    """"
+    args = jpt_parse_args(parser, args='--argument=value')
+    globals().update(args.__dict__) """""
     import shlex
     if jpt_in_notebook() and args is not None:
         opt = parser.parse_args(shlex.split(args))
