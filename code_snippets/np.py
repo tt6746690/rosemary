@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def np_trim_upper(x, α=.005):
     """ Trim extreme values & normalize to [0,1] 
     Useful for processing dicom/xray images with extreme bright pixels """
@@ -7,3 +8,7 @@ def np_trim_upper(x, α=.005):
     x = np.clip(x, 0, x_max)
     x = x / max(1e-3, x.max())
     return x
+
+
+def np_astype_fp32(x):
+    return x.astype(np.float32)

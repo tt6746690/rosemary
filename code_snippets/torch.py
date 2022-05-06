@@ -27,7 +27,7 @@ def torch_configure_cuda(gpu_id):
 
 def torch_input_grad(f, model, x):
     # Computes Gradient of `f(model, x)`` w.r.t. `x`
-    # 
+    #
     with torch.enable_grad():
         model.zero_grad()
         x = x.detach()          # Creates a tensor with shared storage

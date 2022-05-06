@@ -37,7 +37,6 @@ def plt_scaled_colobar_ax(ax):
     return cax
 
 
-
 def plt_savefig(fig, save_path):
     fig.tight_layout()
     fig.savefig(save_path, bbox_inches='tight', dpi=100)
@@ -45,7 +44,7 @@ def plt_savefig(fig, save_path):
 
 def plt_slices(vol, colorbar=True):
     """RAS coordinate: https://www.fieldtriptoolbox.org/faq/coordsys/
-    
+
     (x,y,z)
     -x indicate left hemisphere
     -y indicate rear of brain
@@ -53,9 +52,9 @@ def plt_slices(vol, colorbar=True):
     """
     center = np.array(vol.shape)//2
 
-    slices = [vol[center[0],:,:],  # saggital: slice through x
-              vol[:,center[1],:],  # coronal:  slice through y
-              vol[:,:,center[2]]]  # axial:    slice through z
+    slices = [vol[center[0], :, :],  # saggital: slice through x
+              vol[:, center[1], :],  # coronal:  slice through y
+              vol[:, :, center[2]]]  # axial:    slice through z
 
     fig, axs = plt.subplots(1, len(slices), figsize=(8*len(slices), 8))
 
@@ -68,4 +67,3 @@ def plt_slices(vol, colorbar=True):
             fig.colorbar(im, cax=plt_scaled_colobar_ax(ax))
 
     return fig, axs
-

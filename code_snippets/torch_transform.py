@@ -1,5 +1,6 @@
 import torch
 
+
 def _blend(img1, img2, ratio):
     """ Alpha blending """
     ratio = float(ratio)
