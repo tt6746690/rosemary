@@ -1,10 +1,22 @@
 import os
-
+import random
 import numpy as np
 import torch
 
+def torch_cat_dicts(L):
+    """Concatenates a list of dictionary of torch tensors
+            L = [{k: v1}, {k: v2}, ...] to {k: [v1; v2]} """
+    d = {}
+    if L:
+        K = L[0].keys()
+        cat_fns = [torch.hstack if L[0][k].ndim==0 else torch.cat
+                  for k in K]
+        for cat_fn, k in zip(cat_fns, K):
+            d[k] = cat_fn([x[k] for x in L])
+    return d
 
 def torch_set_random_seed(seed):
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
