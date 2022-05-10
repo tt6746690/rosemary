@@ -1,7 +1,9 @@
+import os, sys, subprocess, warnings, argparse
+from .tree import tree_flatten, tree_unflatten
+
 def jpt_in_notebook():
     try:
         from IPython import get_ipython
-        import os
 
         if "IPKernelApp" not in get_ipython().config:  # pragma: no cover
             raise ImportError("console")
@@ -27,7 +29,6 @@ def jpt_full_width():
 
 
 def jpt_suppress_warnings():
-    import warnings
     from pandas.core.common import SettingWithCopyWarning
     if jpt_in_notebook():
         warnings.simplefilter("ignore", UserWarning)
@@ -39,7 +40,6 @@ def jpt_suppress_warnings():
 def jpt_convert_to_py(ipynb_path):
     if jpt_in_notebook():
         import shlex
-        import subprocess
         cmd = f"jupyter nbconvert --to script {ipynb_path}"
         try:
             retcode = subprocess.call(shlex.split(cmd))
@@ -48,7 +48,6 @@ def jpt_convert_to_py(ipynb_path):
 
 
 def jpt_tsb_stop(port):
-    import os
     # Use SIGTERM/15 instead of SIGKILL/9 so `tensorboard` does proper clean-ups
     os.system(f'kill -15 $(lsof -t -i:{port})')
 
@@ -71,7 +70,6 @@ def jpt_check_memusage(globals_, dir_, getsize_opt='pympler', in_gb=True):
     """ Check memory usage of global variables 
         utils.jpt_check_memusage(globals(), dir())
     """
-    import sys
     from pympler import asizeof
 
     if getsize_opt == 'pympler':
@@ -102,13 +100,77 @@ def jpt_check_memusage(globals_, dir_, getsize_opt='pympler', in_gb=True):
     return l, b
 
 
-def jpt_parse_args(parser, args=None):
+def jpt_split_cmd(cmd=None):
+    import shlex
+    if isinstance(cmd, str):
+        cmd = shlex.split(cmd)
+    return cmd
+
+
+def jpt_parse_args(parser, cmd=None):
     """"
     args = jpt_parse_args(parser, args='--argument=value')
     globals().update(args.__dict__) """""
-    import shlex
-    if jpt_in_notebook() and args is not None:
-        opt = parser.parse_args(shlex.split(args))
+    if jpt_in_notebook() and cmd is not None:
+        return parser.parse_args(jpt_split_cmd(cmd))
     else:
-        opt = parser.parse_args()
-    return opt
+        return parser.parse_args()
+
+
+def jpt_parse_known_args(parser, cmd=None):
+    if jpt_in_notebook() and cmd is not None:
+        return parser.parse_known_args(jpt_split_cmd(cmd))
+    else:
+        return parser.parse_known_args()
+
+
+def jpt_argparse_from_config(cmd=None,
+                             parser_addargs_callback=lambda parser: None):
+    """Construct argparse parser from config files so that
+            - read in config file to populate argparse arguments
+            - modify fields in config files from command line arguments  
+            - specify new arguments with `add_argument_callback`
+
+        cfg = jpt_argparse_from_config(cmd="--config=config.yaml",
+                                       parser_addargs_callback)
+    """
+    from omegaconf import OmegaConf
+    
+    # Parse any conf_file specification
+    # We make this parser with add_help=False so that
+    # it doesn't parse -h and print help.
+    conf_parser = argparse.ArgumentParser(
+        description=__doc__, # printed with -h/--help
+        # Don't mess with format of description
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        # Turn off help, so we print all options in response to -h
+        add_help=False)
+
+    conf_parser.add_argument("-c", "--config", 
+                             metavar="FILE")
+    conf_args, remaining_argv = jpt_parse_known_args(
+        conf_parser, cmd)
+    
+    cfg = OmegaConf.load(conf_args.config) if conf_args.config \
+        else OmegaConf.create()
+
+    # Don't suppress add_help here so it will handle -h
+    parser = argparse.ArgumentParser(
+        parents=[conf_parser])
+
+    for k, v in tree_flatten(cfg).items():
+        if type(v) == bool:
+            parser.add_argument(f'--{k}', default=v, action='store_true')
+            parser.add_argument(f'--no-{k}', dest=k, action='store_false')
+        else:
+            parser.add_argument(f'--{k}', type=type(v), default=v)
+
+    parser_addargs_callback(parser)
+    
+    args = parser.parse_args(remaining_argv)
+    args.config = conf_args.config
+
+    args_nested = tree_unflatten(vars(args))
+    cfg = OmegaConf.create(args_nested)
+            
+    return cfg

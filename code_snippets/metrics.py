@@ -175,7 +175,6 @@ def metrics_clustering(label, embedding, ks=[1]):
     return metrics
 
 
-
 def k_closest(embeddings, nq='all', k=4):
     """Fetch `k` closest neighbor for `nq` randomly sampled
         entries w.r.t. l2 distance.
