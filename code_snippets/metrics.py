@@ -34,7 +34,7 @@ def metrics_binary_classification(label, score, threshold=.5, nll_class_weights=
             label, score, sample_weight=nll_class_weights[label.astype(np.int)])
     metrics['accuracy'] = accuracy_score(label, pred)
     metrics['precision'], metrics['recall'], metrics['f1_score'], _ = precision_recall_fscore_support(
-        label, pred, average='macro')
+        label, pred, average='macro', zero_division=0)
     metrics['precision_avg'] = average_precision_score(
         label, score, average='macro')
     metrics['auroc'] = roc_auc_score(label, score)
@@ -88,12 +88,27 @@ def metrics_multiclass_classification(label, score, nll_class_weights=None):
     metrics['mae_macro'] = np.mean(metrics['mae'])
     metrics['brier_score'] = multiclass_brier_score_loss(label_onehot, score)
 
+    # Convert array-valued outputs to scalar-valued outputs
+    # - `auroc_ordinal`, `auroc_ovr`, `mae`
+    for i in range(len(metrics['auroc_ovr'])):
+        metrics[f'auroc_{i}vr'] = metrics['auroc_ovr'][i]
+    for i in range(len(metrics['auroc_ordinal'])):
+        lhs = [str(i) for i in range(i+1)]
+        rhs = [str(i) for i in range(i+1, len(metrics['auroc_ordinal'])+1)]
+        lhs, rhs = ''.join(lhs), ''.join(rhs)
+        metrics[f'auroc_ordinal_{lhs}v{rhs}'] = metrics['auroc_ordinal'][i]
+    for i in range(len(metrics['mae'])):
+        metrics[f'mae_{i}'] = metrics['mae'][i]
+
+    for k in ['auroc_ovr', 'auroc_ordinal', 'mae']:
+        metrics.pop(k)
+
     return metrics
 
 
 def log_loss_fp32(label, score, **kwargs):
     """When score is `float32`, computing `log(score)` will introduce
-            extreme values when computing `log_loss` """
+            extreme values """
     return log_loss(label, score.astype(np.float64), **kwargs)
 
 
