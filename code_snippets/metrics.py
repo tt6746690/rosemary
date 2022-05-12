@@ -28,9 +28,9 @@ def metrics_binary_classification(label, score, threshold=.5, nll_class_weights=
 
     metrics = {}
     metrics['N'] = len(label)
-    metrics['nll'] = log_loss(label, score)
+    metrics['nll'] = log_loss_fp32(label, score)
     if nll_class_weights is not None:
-        metrics['nll_weighted'] = log_loss(
+        metrics['nll_weighted'] = log_loss_fp32(
             label, score, sample_weight=nll_class_weights[label.astype(np.int)])
     metrics['accuracy'] = accuracy_score(label, pred)
     metrics['precision'], metrics['recall'], metrics['f1_score'], _ = precision_recall_fscore_support(
@@ -67,9 +67,9 @@ def metrics_multiclass_classification(label, score, nll_class_weights=None):
 
     metrics = {}
     metrics['N'] = len(label)
-    metrics['nll'] = log_loss(label, score, labels=class_labels)
+    metrics['nll'] = log_loss_fp32(label, score, labels=class_labels)
     if nll_class_weights is not None:
-        metrics['nll_weighted'] = log_loss(
+        metrics['nll_weighted'] = log_loss_fp32(
             label, score, sample_weight=nll_class_weights[label])
     metrics['accuracy'] = accuracy_score(label, pred)
     metrics['precision'], metrics['recall'], metrics['f1_score'], _ = \
@@ -89,6 +89,12 @@ def metrics_multiclass_classification(label, score, nll_class_weights=None):
     metrics['brier_score'] = multiclass_brier_score_loss(label_onehot, score)
 
     return metrics
+
+
+def log_loss_fp32(label, score, **kwargs):
+    """When score is `float32`, computing `log(score)` will introduce
+            extreme values when computing `log_loss` """
+    return log_loss(label, score.astype(np.float64), **kwargs)
 
 
 def multiclass_brier_score_loss(label_onehot, score):
