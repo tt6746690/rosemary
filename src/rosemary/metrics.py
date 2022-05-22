@@ -11,7 +11,10 @@ from sklearn.metrics import (
 from sklearn.metrics.cluster import normalized_mutual_info_score
 from sklearn.preprocessing import LabelBinarizer
 
-from .torch import torch_tensor_to_ndarray
+try:
+    from .torch import torch_tensor_to_ndarray
+except ImportError:
+    torch_tensor_to_ndarray = lambda x: x
 
 
 __all__ = [

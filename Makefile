@@ -14,7 +14,7 @@ pip_install_pypi:
 	python3 -m pip install -i https://test.pypi.org/simple/ --no-deps rosemary
 
 pip_install_e:
-	python3 -m pip -v install -e . #  --log log.txt
+	python3 -m pip -v install -e /data/vision/polina/scratch/wpq/github/rosemary #  --log log.txt
 
 pip_install:
 	python3 -m pip install .

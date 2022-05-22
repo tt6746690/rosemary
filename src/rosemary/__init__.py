@@ -12,6 +12,11 @@ from .metrics import *
 from .np import *
 from .pd import *
 from .plt import *
-from .torch_transform import *
-from .torch import *
 from .tree import *
+
+try:
+    from .torch_transform import *
+    from .torch import *
+except ImportError as e:
+    from warnings import warn
+    warn(f'Install `torch` for functionalities dependent on torch')
