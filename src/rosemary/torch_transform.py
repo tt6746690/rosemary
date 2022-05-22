@@ -1,5 +1,9 @@
 import torch
 
+__all__ = [
+    'GrayscaleJitter',
+]
+
 
 def _blend(img1, img2, ratio):
     """ Alpha blending """

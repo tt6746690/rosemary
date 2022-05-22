@@ -1,5 +1,21 @@
 import os, sys, subprocess, warnings, argparse
-from .tree import tree_flatten, tree_unflatten
+from rosemary.tree import tree_flatten, tree_unflatten
+
+
+__all__ = [
+    'jpt_in_notebook',
+    'jpt_autoreload',
+    'jpt_full_width',
+    'jpt_suppress_warnings',
+    'jpt_convert_to_py',
+    'jpt_tsb_stop',
+    'jpt_tsb_start',
+    'jpt_tsb_restart',
+    'jpt_check_memusage',
+    'jpt_parse_args',
+    'jpt_argparse_from_config',
+]
+
 
 def jpt_in_notebook():
     try:

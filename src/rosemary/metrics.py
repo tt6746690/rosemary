@@ -14,6 +14,13 @@ from sklearn.preprocessing import LabelBinarizer
 from .torch import torch_tensor_to_ndarray
 
 
+__all__ = [
+    'metrics_binary_classification',
+    'metrics_multiclass_classification',
+    'metrics_clustering',
+]
+
+
 def metrics_binary_classification(label, score, threshold=.5, nll_class_weights=None):
     """Metrics for binary classification.
             label           (n_samples,)

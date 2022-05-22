@@ -2,6 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+__all__ = [
+    'plt_kernel_matrix_one',
+    'plt_scaled_colobar_ax',
+    'plt_savefig',
+    'plt_slices',
+]
+
+
 def plt_kernel_matrix_one(fig, ax, K, title=None, n_ticks=5,
                           custom_ticks=True, vmin=None, vmax=None, annotate=False):
     im = ax.imshow(K, vmin=vmin, vmax=vmax)

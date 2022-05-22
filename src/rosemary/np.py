@@ -1,5 +1,9 @@
 import numpy as np
 
+__all__ = [
+    'np_trim_upper',
+    'np_astype_fp32',
+]
 
 def np_trim_upper(x, α=.005):
     """ Trim extreme values & normalize to [0,1] 
