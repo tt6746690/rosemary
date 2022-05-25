@@ -13,4 +13,4 @@ path_to_conda="/data/vision/polina/shared_software/miniconda3"
 
 source ${path_to_conda}/bin/activate cxr
 cd /data/vision/polina/scratch/wpq/github/
-jupyter notebook --no-browser --port=8895
+jupyter notebook --no-browser --port=8899
