@@ -14,7 +14,13 @@ __all__ = [
     'jpt_check_memusage',
     'jpt_parse_args',
     'jpt_argparse_from_config',
+    'jpt_setup'
 ]
+
+
+def jpt_setup():
+    jpt_autoreload()
+    jpt_full_width()
 
 
 def jpt_in_notebook():
