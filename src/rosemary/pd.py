@@ -33,14 +33,24 @@ def pd_dataset_split(df, cols, keys=['train', 'validate', 'test']):
         m[k] = fix_ordering(df[df[k].notnull()]
                             ['split'].value_counts().to_dict())
     stat_df = pd.DataFrame(m)
+    colsum = stat_df.sum(axis=0).apply(lambda x: int(x))
     stat_df = pd_add_colwise_percentage(stat_df)
+    stat_df.loc['total', :] = colsum
     return stat_df
 
 
 def pd_dataset_label_proportion(df, cols):
+    """ Creates a dataframe where 
+            rows := possible labels
+            cols := column names
+        and the cell contain the counts of the label 
+            occuring under that column name
+    """
     m = {}
     for k in cols:
         m[k] = df[df[k].notnull()][k].value_counts().to_dict()
     stat_df = pd.DataFrame(m)
+    colsum = stat_df.sum(axis=0).apply(lambda x: int(x))
     stat_df = pd_add_colwise_percentage(stat_df)
+    stat_df.loc['total', :] = colsum
     return stat_df

@@ -4,6 +4,7 @@ __all__ = [
     'tree_unflatten',
     'dict_iterated_getitem',
     'dict_iterated_setitem',
+    'set_statistics',
 ]
 
 
@@ -52,3 +53,18 @@ def dict_iterated_setitem(d, ks, v):
     for k in ks[:-1]:
         x = x[k]
     x[ks[-1]] = v
+
+
+def set_statistics(s1, s2):
+    """ Computes size of s1&s2, s1-s2, s2-s1. """
+    s1 = set(s1)
+    s2 = set(s2)
+    info = [
+        ('s1', len(s1)),
+        ('s2', len(s2)),
+        ('s1&s2', len(s1&s2)),
+        ('s1-s2', len(s1-s2)),
+        ('s2-s1', len(s2-s1)),
+    ]
+    for x, y in info:
+        print(f'{x:6} {y}')
