@@ -6,6 +6,7 @@ __all__ = [
     'pd_column_locs',
     'pd_dataset_split',
     'pd_dataset_label_proportion',
+    'pd_apply_fn_to_list_flattened',
 ]
 
 def pd_add_colwise_percentage(df):
@@ -54,3 +55,36 @@ def pd_dataset_label_proportion(df, cols):
     stat_df = pd_add_colwise_percentage(stat_df)
     stat_df.loc['total', :] = colsum
     return stat_df
+
+
+def pd_apply_fn_to_list_flattened(fn, df, by, col):
+    """Use explode to flatten `df[col]` where cell value
+        are List<object>. Then apply `fn` to generate an 
+        updated list of values. Then compressed to list form.
+            
+            fn: List<str> -> List<object>
+
+        ```
+        col = 'sents'
+        s = pd_apply_fn_to_list_flattened(
+            lambda x: x, df, 'study_id', col)
+        assert(s.equals(df[col]))
+        ```
+
+        Note explode convert `[]` -> `np.nan`
+        If `fn` requires non-null vaules, need to make sure 
+            there is no `[]` in `df[col]`.
+    """
+    # Pick rows with non-nan value.
+    notnull_indices = df.index[df[col].notnull()]
+    # Transform each element of a list-like to row.
+    dfe = df.loc[notnull_indices].explode(col)
+
+    dfe[col] = fn(dfe[col])
+    # Transform to list-like value.
+    # re-order `col` by ordering of `df[by]`
+    dfe = (dfe.groupby(by)
+              .agg({col: lambda x: x.to_list()})
+              .reindex(index=df[by])
+              .reset_index())
+    return dfe[col]
