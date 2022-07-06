@@ -10,6 +10,8 @@
 
 # Customize this line to point to conda installation
 path_to_conda="/data/vision/polina/shared_software/miniconda3"
+# huggingface cache
+export HF_HOME='/data/vision/polina/scratch/wpq/github/huggingface_cache'
 
 source ${path_to_conda}/bin/activate cxr
 cd /data/vision/polina/scratch/wpq/github/

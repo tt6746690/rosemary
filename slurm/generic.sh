@@ -14,6 +14,8 @@ set -e # fail fully on first line failure
 
 # Customize this line to point to conda installation
 path_to_conda="/data/vision/polina/shared_software/miniconda3"
+# huggingface cache
+export HF_HOME='/data/vision/polina/scratch/wpq/github/huggingface_cache'
 
 echo "Running on $(hostname)"
 
