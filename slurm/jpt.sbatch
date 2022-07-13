@@ -6,7 +6,7 @@
 #SBATCH --nodelist=wasabi
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=100GB
-#SBATCH --output=/data/vision/polina/scratch/wpq/github/code_snippets/slurm/jpt.out
+#SBATCH --output=/data/vision/polina/scratch/wpq/github/rosemary/slurm/jpt.out
 
 # Customize this line to point to conda installation
 path_to_conda="/data/vision/polina/shared_software/miniconda3"
