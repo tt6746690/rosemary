@@ -14,7 +14,7 @@ pip_install_pypi:
 
 pip_install_editable:
 	# creates platform-independent `egg-link` file in site-package/ linked to current directory
-	python3 -m pip -v install -e /data/vision/polina/scratch/wpq/github/code_snippets #  --log log.txt
+	python3 -m pip -v install -e . #  --log log.txt
 	# check link installed properly
 	python3 -m pip list | grep rosemary
 
