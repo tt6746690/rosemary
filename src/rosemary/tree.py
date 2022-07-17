@@ -42,6 +42,13 @@ def tree_unflatten(flat):
     
 
 def dict_iterated_getitem(d, ks):
+    """ Get dictionary item successively.
+        
+        `ks`
+            ['k1','k2'] or 'k1.k2'
+    """
+    if isinstance(ks, str):
+        ks = ks.split('.')
     x = d
     for k in ks:
         x = x[k]
