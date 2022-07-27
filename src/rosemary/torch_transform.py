@@ -1,8 +1,56 @@
+from PIL import Image
+
+import numpy as np
 import torch
+from torchvision.transforms import Resize
+from torchvision.transforms.functional import resize, InterpolationMode
 
 __all__ = [
     'GrayscaleJitter',
+    'resize_with_clip',
+    'ResizeWithClip',
 ]
+
+
+def resize_with_clip(img, size, interpolation=InterpolationMode.BILINEAR, max_size=None, antialias=None, clip=True):
+    """Resize image & clip pixel value over shooting 
+            as a result of using InterpolationMode.{BICUBIC, LANCZOS}
+       Similar to how scikit-image handles resizing
+           https://scikit-image.org/docs/stable/api/skimage.transform.html#skimage.transform.resize
+
+        """
+    if (not clip) or (interpolation not in [InterpolationMode.BICUBIC, InterpolationMode.LANCZOS]):
+        return resize(img, size, interpolation=interpolation, max_size=max_size, antialias=antialias)
+        
+    if isinstance(img, torch.Tensor):
+        min_val, max_val = img.min().item(), img.max().item()
+    if isinstance(img, Image.Image):
+        min_val, max_val = img.getextrema()
+        
+    img = resize(img, size, interpolation=interpolation, max_size=max_size, antialias=antialias)
+        
+    if isinstance(img, torch.Tensor):
+        img = torch.clamp(img, min_val, max_val)
+    if isinstance(img, Image.Image):
+        img = np.array(img).clip(min_val, max_val)
+        img = Image.fromarray(img)
+        
+    return img
+    
+    
+class ResizeWithClip(Resize):
+    """https://pytorch.org/vision/stable/_modules/torchvision/transforms/transforms.html#Resize """
+    def __init__(self, size, interpolation=InterpolationMode.BILINEAR, max_size=None, antialias=None, clip=True):
+        super().__init__(size, interpolation=interpolation, max_size=max_size, antialias=antialias)
+        self.clip = clip
+        
+    def forward(self, img):
+        return resize_with_clip(img, self.size, self.interpolation, self.max_size, self.antialias, self.clip)
+
+    def __repr__(self) -> str:
+        detail = (f"(size={self.size}, interpolation={self.interpolation.value}, "
+                  f"max_size={self.max_size}, antialias={self.antialias}) clip={self.clip}")
+        return f"{self.__class__.__name__}{detail}"
 
 
 def _blend(img1, img2, ratio):

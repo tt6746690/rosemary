@@ -3,6 +3,7 @@ import numpy as np
 __all__ = [
     'np_trim_upper',
     'np_astype_fp32',
+    'np_astype_int32',
 ]
 
 def np_trim_upper(x, α=.005):
@@ -16,3 +17,6 @@ def np_trim_upper(x, α=.005):
 
 def np_astype_fp32(x):
     return x.astype(np.float32)
+
+def np_astype_int32(x):
+    return x.astype(np.int32)
