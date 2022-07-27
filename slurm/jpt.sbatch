@@ -3,7 +3,7 @@
 #SBATCH --time=1000-00:00:00
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:4
-#SBATCH --nodelist=wasabi
+#SBATCH --nodelist=perilla
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=100GB
 #SBATCH --output=/data/vision/polina/scratch/wpq/github/rosemary/slurm/jpt.out
