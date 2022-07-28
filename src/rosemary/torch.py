@@ -8,8 +8,25 @@ __all__ = [
     'torch_cat_dicts',
     'torch_set_random_seed',
     'torch_configure_cuda',
-    'torch_input_grad'
+    'torch_input_grad',
+    'torch_get_dimensions',
 ]
+
+
+def torch_get_dimensions(img):
+    """Introduced in torchvision=1.13.0."""
+    from PIL import Image
+    if isinstance(img, Image.Image):
+        if hasattr(img, "getbands"):
+            channels = len(img.getbands())
+        else:
+            channels = img.channels
+        width, height = img.size
+        return [channels, height, width]
+    if isinstance(img, (torch.Tensor, np.ndarray)):
+        channels = 1 if img.ndim == 2 else img.shape[-3]
+        height, width = img.shape[-2:]
+        return [channels, height, width]
 
 
 def torch_tensor_to_ndarray(x):
