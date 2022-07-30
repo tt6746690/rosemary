@@ -21,10 +21,9 @@ __all__ = [
     'metrics_binary_classification',
     'metrics_multiclass_classification',
     'metrics_clustering',
-    'metrics_detection',
+    'metrics_grounding',
     'np_mask_iou',
-    'np_mask_ious',
-    'box_to_mask',
+    'np_box_to_mask',
 ]
 
 
@@ -336,7 +335,7 @@ def cluster_f1_score(model_generated_cluster_labels, target_labels, feature_coll
     return F1
 
 
-def metrics_detection(label, score, image_shape):
+def metrics_grounding(label, score, image_shape, device='cuda'):
     """Computes metric for detection tasks
         label        (n_samples, 4)
             assume label comes in the form of bounding boxes.
@@ -344,13 +343,30 @@ def metrics_detection(label, score, image_shape):
             similarity mapping.
         image_shape  (n_samples, 2)
             in (h, w) format
+
+        using device=`cuda` ~40x faster than device='cpu'
+        but needs to be careful about memory usage as `score` 
+        may be a very long list and `d=h*w` might be large.
     """
-    label = torch_tensor_to_ndarray(label)
-    score = torch_tensor_to_ndarray(score)
-    image_shape = torch_tensor_to_ndarray(image_shape)
-    
+    if device == 'cpu':
+        label = torch_tensor_to_ndarray(label)
+        score = torch_tensor_to_ndarray(score)
+        if isinstance(label, list):
+            label = [torch_tensor_to_ndarray(x) for x in label]
+        if isinstance(score, list):
+            score = [torch_tensor_to_ndarray(x) for x in score]
+        box_to_mask_fn = np_box_to_mask
+        mask_ious_fn = np_mask_ious
+    else:
+        label = [torch_ndarray_to_tensor(x).to(device) for x in label] \
+            if isinstance(label, list) else torch_ndarray_to_tensor(label).to(device)
+        score = [torch_ndarray_to_tensor(x).to(device) for x in score] \
+            if isinstance(score, list) else torch_ndarray_to_tensor(score).to(device)
+        box_to_mask_fn = torch_box_to_mask
+        mask_ious_fn = torch_mask_ious
+        
     masks = [
-        box_to_mask(box, shape)
+        box_to_mask_fn(box, shape)
         for box, shape in zip(label, image_shape)]
     
     metrics = {}
@@ -359,7 +375,7 @@ def metrics_detection(label, score, image_shape):
     IoUs, mIoU = [], []
     ts = [.1,.2,.3,.4,.5]
     for mask, sim in zip(masks, score):
-        ious, miou = np_mask_ious(mask, sim, ts)
+        ious, miou = mask_ious_fn(mask, sim, ts)
         IoUs.append(ious)
         mIoU.append(miou)
     for i, t in enumerate(ts):
@@ -369,24 +385,9 @@ def metrics_detection(label, score, image_shape):
     return metrics
 
 
-def torch_mask_iou(label, score, t=.5, ϵ=1e-6):
-    pred = score > t
-    label, pred = label.flatten(), pred.flatten()
-    intersection = torch.logical_and(label, pred).sum(-1)
-    union = torch.logical_or(label, pred).sum(-1)
-    iou = (intersection) / (union + ϵ)
-    return iou.item()
-
-
-def torch_mask_ious(label, score, ts=[.5]):
-    ious = []
-    for t in ts:
-        ious.append(torch_mask_iou(label, score, t))
-    return ious, np.mean(ious)
-
-
 def np_mask_iou_slow(label, score, t=.5):
     """`target`, `prediction` are 2d images. """
+    from sklearn.metrics import jaccard_score
     # Don't need to np.nan -> 0. since thresholding nan values.
     # score = np.nan_to_num(score, nan=0.)
     pred = score>t
@@ -413,9 +414,38 @@ def np_mask_ious(label, score, ts=[.5]):
     return ious, np.mean(ious)
 
 
-def box_to_mask(box, image_shape):
+def np_box_to_mask(box, image_shape):
     """Convert `box` to `mask` given `image_shape` (h,w)."""
     box = box.squeeze().astype(int)
     mask = np.zeros(image_shape, dtype=bool)
     mask[box[1]:box[3],box[0]:box[2]] = True
     return mask
+
+
+def torch_ndarray_to_tensor(x):
+    if isinstance(x, np.ndarray):
+        return torch.from_numpy(x)
+    return x
+
+
+def torch_box_to_mask(box, image_shape):
+    box = box.squeeze().to(int)
+    mask = torch.zeros(image_shape, dtype=torch.bool, device=box.device)
+    mask[box[1]:box[3],box[0]:box[2]] = True
+    return mask
+
+
+def torch_mask_iou(label, score, t=.5, ϵ=1e-6):
+    pred = score > t
+    label, pred = label.flatten(), pred.flatten()
+    intersection = torch.logical_and(label, pred).sum()
+    union = torch.logical_or(label, pred).sum()
+    iou = (intersection) / (union + ϵ)
+    return iou.item()
+
+
+def torch_mask_ious(label, score, ts=[.5]):
+    ious = []
+    for t in ts:
+        ious.append(torch_mask_iou(label, score, t))
+    return ious, np.mean(ious)
