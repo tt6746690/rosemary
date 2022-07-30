@@ -24,29 +24,32 @@ if version.parse(torchvision.__version__) < version.parse("0.7.0"):
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
 
+from .torch import torch_get_dimensions
+
 
 __all__ = [
-    'crop_target',
-    'center_crop_target',
-    'center_crop',
-    'hflip',
-    'hflip_target',
-    'resize',
-    'pad',
-    'RandomCrop',
-    'RandomSizeCrop',
-    'CenterCrop',
-    'RandomHorizontalFlip',
-    'RandomResize', 
-    'RandomPad',
-    'RandomSelect',
-    'ToTensor',
-    'RandomErasing',
-    'Normalize',
-    'Compose',
-    'Lambda',
-    'LambdaImage',
-    'LambdaTarget'
+    "crop_target",
+    "center_crop_target",
+    "center_crop",
+    "hflip",
+    "hflip_target",
+    "resize",
+    "pad",
+    "RandomCrop",
+    "RandomSizeCrop",
+    "CenterCrop",
+    "RandomHorizontalFlip",
+    "RandomResize" 
+    "RandomPad",
+    "RandomSelect",
+    "ToTensor",
+    "RandomErasing",
+    "Normalize",
+    "Compose",
+    "Lambda",
+    "LambdaImage",
+    "LambdaTarge",
+    "ExpandChannels",
 ]
 
 
@@ -154,13 +157,13 @@ def center_crop_region(image_shape, output_size):
 
 
 def center_crop(image, target, output_size):
-    region = center_crop_region(F.get_dimensions(image)[1:], output_size)
+    region = center_crop_region(torch_get_dimensions(image)[1:], output_size)
     return crop(image, target, region)
 
 
 def hflip(image, target):
     flipped_image = F.hflip(image)
-    w, _ = F.get_image_size(image)
+    w = torch_get_dimensions(image)[2]
     target = hflip_target(target, w)
     return flipped_image, target
 
@@ -201,18 +204,18 @@ def resize(image, target, size, interpolation=F.InterpolationMode.BILINEAR, max_
 
     def get_size(image_size, size, max_size=None):
         if isinstance(size, (list, tuple)):
-            return size
+            return size[::-1]
         else:
             return get_size_with_aspect_ratio(image_size, size, max_size)
 
-    size = get_size(F.get_image_size(image), size, max_size) # (h, w)
+    size = get_size(get_image_size(image), size, max_size) # (h, w)
     rescaled_image = F.resize(image, size, interpolation=interpolation, max_size=max_size)
 
     if target is None:
         return rescaled_image, None
 
     ratios = tuple(float(s) / float(s_orig) for s, s_orig 
-        in zip(F.get_image_size(rescaled_image), F.get_image_size(image)))
+        in zip(get_image_size(rescaled_image), get_image_size(image)))
     ratio_width, ratio_height = ratios
 
     # target = target.copy()
@@ -243,7 +246,7 @@ def pad(image, target, padding):
         return padded_image, None
     # target = target.copy()
     # should we do something wrt the original size?
-    target["size"] = torch.tensor(F.get_image_size(padded_image)[::-1])
+    target["size"] = torch.tensor(torch_get_dimensions(padded_image)[1:])
     if "masks" in target:
         target['masks'] = torch.nn.functional.pad(target['masks'], (0, padding[0], 0, padding[1]))
     return padded_image, target
@@ -264,7 +267,7 @@ class RandomSizeCrop(object):
         self.max_size = max_size
 
     def __call__(self, image, target):
-        image_width, image_height = F.get_image_size(image)
+        image_width, image_height = get_image_size(image)
         w = random.randint(self.min_size, min(image_width, self.max_size))
         h = random.randint(self.min_size, min(image_height, self.max_size))
         region = T.RandomCrop.get_params(image, [h, w])
@@ -358,12 +361,13 @@ class Normalize(object):
         if target is None:
             return image, None
         # target = target.copy()
-        h, w = image.shape[-2:]
-        if "boxes" in target:
-            boxes = target["boxes"]
-            boxes = box_xyxy_to_cxcywh(boxes)
-            boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
-            target["boxes"] = boxes
+        ## wpq: used for training detectors. shouldn't be in this class.
+        # h, w = image.shape[-2:]
+        # if "boxes" in target:
+        #     boxes = target["boxes"]
+        #     boxes = box_xyxy_to_cxcywh(boxes)
+        #     boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
+        #     target["boxes"] = boxes
         return image, target
 
 
@@ -409,3 +413,20 @@ class LambdaTarget(T.Lambda):
     def __call__(self, image, target):
         target = super().__call__(target)
         return image, target
+
+
+class ExpandChannels:
+    """ #channels 1 -> 3 via copy. """
+
+    def __call__(self, image, target):
+        dims = torch_get_dimensions(image)
+        if dims[0] != 1:
+            raise ValueError(
+               f"Number of channels should be 1 but got {dims[0]}")
+        image = image.reshape(dims)
+        image = torch.repeat_interleave(image, 3, dim=0)
+        return image, target
+
+
+def get_image_size(image):
+    return torch_get_dimensions(image)[1:][::-1]

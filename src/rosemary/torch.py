@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 __all__ = [
+    'torch_unnormalize',
     'torch_tensor_to_ndarray',
     'torch_cat_dicts',
     'torch_set_random_seed',
@@ -11,6 +12,17 @@ __all__ = [
     'torch_input_grad',
     'torch_get_dimensions',
 ]
+
+
+def torch_unnormalize(tensor, mean=0.628, std=0.255):
+    """Reverse `Normalize(mean, std)` for plotting purposes. """
+    dtype, device = tensor.dtype, tensor.device
+    mean = torch.as_tensor(mean, dtype=dtype, device=device)
+    std = torch.as_tensor(std, dtype=dtype, device=device)
+    if mean.ndim == 1: mean = mean.view(-1, 1, 1)
+    if std.ndim == 1: std = std.view(-1, 1, 1)
+    tensor.mul_(std).add_(mean)
+    return tensor
 
 
 def torch_get_dimensions(img):

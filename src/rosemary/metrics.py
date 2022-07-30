@@ -21,6 +21,10 @@ __all__ = [
     'metrics_binary_classification',
     'metrics_multiclass_classification',
     'metrics_clustering',
+    'metrics_detection',
+    'np_mask_iou',
+    'np_mask_ious',
+    'box_to_mask',
 ]
 
 
@@ -330,3 +334,88 @@ def cluster_f1_score(model_generated_cluster_labels, target_labels, feature_coll
     F1 = (beta*beta + 1) * P * R / (beta*beta * P + R)
 
     return F1
+
+
+def metrics_detection(label, score, image_shape):
+    """Computes metric for detection tasks
+        label        (n_samples, 4)
+            assume label comes in the form of bounding boxes.
+        score        (n_samples, d)
+            similarity mapping.
+        image_shape  (n_samples, 2)
+            in (h, w) format
+    """
+    label = torch_tensor_to_ndarray(label)
+    score = torch_tensor_to_ndarray(score)
+    image_shape = torch_tensor_to_ndarray(image_shape)
+    
+    masks = [
+        box_to_mask(box, shape)
+        for box, shape in zip(label, image_shape)]
+    
+    metrics = {}
+    metrics['N'] = len(label)
+    
+    IoUs, mIoU = [], []
+    ts = [.1,.2,.3,.4,.5]
+    for mask, sim in zip(masks, score):
+        ious, miou = np_mask_ious(mask, sim, ts)
+        IoUs.append(ious)
+        mIoU.append(miou)
+    for i, t in enumerate(ts):
+        metrics[f"IoU@{t}"] = np.mean([x[i] for x in IoUs])    
+    metrics[f"mIoU"] = np.mean(mIoU)
+    
+    return metrics
+
+
+def torch_mask_iou(label, score, t=.5, ϵ=1e-6):
+    pred = score > t
+    label, pred = label.flatten(), pred.flatten()
+    intersection = torch.logical_and(label, pred).sum(-1)
+    union = torch.logical_or(label, pred).sum(-1)
+    iou = (intersection) / (union + ϵ)
+    return iou.item()
+
+
+def torch_mask_ious(label, score, ts=[.5]):
+    ious = []
+    for t in ts:
+        ious.append(torch_mask_iou(label, score, t))
+    return ious, np.mean(ious)
+
+
+def np_mask_iou_slow(label, score, t=.5):
+    """`target`, `prediction` are 2d images. """
+    # Don't need to np.nan -> 0. since thresholding nan values.
+    # score = np.nan_to_num(score, nan=0.)
+    pred = score>t
+    pred = pred.astype(label.dtype)
+    iou = jaccard_score(label, pred, average='micro')
+    return iou
+
+
+def np_mask_iou(label, score, t=.5, ϵ=1e-6):
+    """`label`, `score` are 2d images. 
+        20x faster than `np_mask_iou`. """
+    pred = score > t
+    label, pred = label.flatten(), pred.flatten()
+    intersection = np.logical_and(label, pred).sum()
+    union = np.logical_or(label, pred).sum()
+    iou = (intersection) / (union + ϵ)
+    return iou
+
+
+def np_mask_ious(label, score, ts=[.5]):
+    ious = []
+    for t in ts:
+        ious.append(np_mask_iou(label, score, t))
+    return ious, np.mean(ious)
+
+
+def box_to_mask(box, image_shape):
+    """Convert `box` to `mask` given `image_shape` (h,w)."""
+    box = box.squeeze().astype(int)
+    mask = np.zeros(image_shape, dtype=bool)
+    mask[box[1]:box[3],box[0]:box[2]] = True
+    return mask
