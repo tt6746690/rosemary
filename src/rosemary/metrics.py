@@ -24,6 +24,7 @@ __all__ = [
     'metrics_grounding',
     'np_mask_iou',
     'np_box_to_mask',
+    'torch_box_to_mask',
 ]
 
 
@@ -367,18 +368,23 @@ def metrics_grounding(label, score, image_shape, device='cuda'):
         box_to_mask_fn = torch_box_to_mask
         mask_ious_fn = torch_mask_ious
         
-    masks = [
-        box_to_mask_fn(box, shape)
-        for box, shape in zip(label, image_shape)]
+    if label[0].shape[-1] == 4:
+        masks = [
+            box_to_mask_fn(box, shape)
+            for box, shape in zip(label, image_shape)]
+    else:
+        masks = label # `label` is a list of gt binary masks.
     
     metrics = {}
     metrics['N'] = len(label)
     
     IoUs, mIoU = [], []
     ts = [.1,.2,.3,.4,.5]
-    for mask, sim in zip(masks, score):
+    from tqdm import tqdm
+    for mask, sim in tqdm(zip(masks, score), total=len(masks)):
         if device == 'gpu':
-            mask, sim = mask.to(device), sim.to(device)
+            mask = mask.to(device, non_blocking=True)
+            sim = sim.to(device, non_blocking=True)
         ious, miou = mask_ious_fn(mask, sim, ts)
         IoUs.append(ious)
         mIoU.append(miou)
@@ -420,9 +426,11 @@ def np_mask_ious(label, score, ts=[.5]):
 
 def np_box_to_mask(box, image_shape):
     """Convert `box` to `mask` given `image_shape` (h,w)."""
-    box = box.squeeze().astype(int)
+    if box.ndim != 2:
+        raise ValueError('`boxes` should be (#boxes, 4)')
     mask = np.zeros(image_shape, dtype=bool)
-    mask[box[1]:box[3],box[0]:box[2]] = True
+    for b in box.astype(int): # potentially rounding error.
+        mask[b[1]:b[3],b[0]:b[2]] = True
     return mask
 
 
@@ -434,10 +442,16 @@ def torch_ndarray_to_tensor(x):
 
 
 def torch_box_to_mask(box, image_shape):
+    """Convert a list of boxes to a single mask of `image_shape`
+            boxes    (#boxes, 4)
+    """
     import torch
-    box = box.squeeze().to(int)
-    mask = torch.zeros(image_shape, dtype=torch.bool, device=box.device)
-    mask[box[1]:box[3],box[0]:box[2]] = True
+    if box.ndim != 2:
+        raise ValueError('`boxes` should be (#boxes, 4)')
+    mask = torch.zeros(
+        image_shape, dtype=torch.bool, device=box.device)
+    for b in box.to(int): # potentially rounding error.
+        mask[b[1]:b[3],b[0]:b[2]] = True
     return mask
 
 
