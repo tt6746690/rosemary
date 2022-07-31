@@ -348,9 +348,12 @@ def metrics_grounding(label, score, image_shape, device='cuda'):
         but needs to be careful about memory usage as `score` 
         may be a very long list and `d=h*w` might be large.
     """
+    if not isinstance(label, list):
+        raise ValueError('`label` should be List<Tensor|ndarray>')
+    if not isinstance(score, list):
+        raise ValueError('`score` should be List<Tensor|ndarray>')
+
     if device == 'cpu':
-        label = torch_tensor_to_ndarray(label)
-        score = torch_tensor_to_ndarray(score)
         if isinstance(label, list):
             label = [torch_tensor_to_ndarray(x) for x in label]
         if isinstance(score, list):
@@ -358,10 +361,9 @@ def metrics_grounding(label, score, image_shape, device='cuda'):
         box_to_mask_fn = np_box_to_mask
         mask_ious_fn = np_mask_ious
     else:
-        label = [torch_ndarray_to_tensor(x).to(device) for x in label] \
-            if isinstance(label, list) else torch_ndarray_to_tensor(label).to(device)
-        score = [torch_ndarray_to_tensor(x).to(device) for x in score] \
-            if isinstance(score, list) else torch_ndarray_to_tensor(score).to(device)
+        # transfer to device in for-loop to reduce memory consumption.
+        label = [torch_ndarray_to_tensor(x) for x in label]
+        score = [torch_ndarray_to_tensor(x) for x in score]
         box_to_mask_fn = torch_box_to_mask
         mask_ious_fn = torch_mask_ious
         
@@ -375,6 +377,8 @@ def metrics_grounding(label, score, image_shape, device='cuda'):
     IoUs, mIoU = [], []
     ts = [.1,.2,.3,.4,.5]
     for mask, sim in zip(masks, score):
+        if device == 'gpu':
+            mask, sim = mask.to(device), sim.to(device)
         ious, miou = mask_ious_fn(mask, sim, ts)
         IoUs.append(ious)
         mIoU.append(miou)
@@ -423,12 +427,14 @@ def np_box_to_mask(box, image_shape):
 
 
 def torch_ndarray_to_tensor(x):
+    import torch
     if isinstance(x, np.ndarray):
         return torch.from_numpy(x)
     return x
 
 
 def torch_box_to_mask(box, image_shape):
+    import torch
     box = box.squeeze().to(int)
     mask = torch.zeros(image_shape, dtype=torch.bool, device=box.device)
     mask[box[1]:box[3],box[0]:box[2]] = True
@@ -436,6 +442,7 @@ def torch_box_to_mask(box, image_shape):
 
 
 def torch_mask_iou(label, score, t=.5, ϵ=1e-6):
+    import torch
     pred = score > t
     label, pred = label.flatten(), pred.flatten()
     intersection = torch.logical_and(label, pred).sum()
