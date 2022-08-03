@@ -24,6 +24,7 @@ __all__ = [
     'metrics_grounding',
     'np_mask_iou',
     'np_box_to_mask',
+    'torch_mask_iou',
     'torch_box_to_mask',
 ]
 
@@ -395,21 +396,10 @@ def metrics_grounding(label, score, image_shape, device='cuda'):
     return metrics
 
 
-def np_mask_iou_slow(label, score, t=.5):
-    """`target`, `prediction` are 2d images. """
-    from sklearn.metrics import jaccard_score
-    # Don't need to np.nan -> 0. since thresholding nan values.
-    # score = np.nan_to_num(score, nan=0.)
-    pred = score>t
-    pred = pred.astype(label.dtype)
-    iou = jaccard_score(label, pred, average='micro')
-    return iou
-
-
 def np_mask_iou(label, score, t=.5, ϵ=1e-6):
     """`label`, `score` are 2d images. 
         20x faster than `np_mask_iou`. """
-    pred = score > t
+    pred = score >= t
     label, pred = label.flatten(), pred.flatten()
     intersection = np.logical_and(label, pred).sum()
     union = np.logical_or(label, pred).sum()
@@ -457,7 +447,7 @@ def torch_box_to_mask(box, image_shape):
 
 def torch_mask_iou(label, score, t=.5, ϵ=1e-6):
     import torch
-    pred = score > t
+    pred = score >= t
     label, pred = label.flatten(), pred.flatten()
     intersection = torch.logical_and(label, pred).sum()
     union = torch.logical_or(label, pred).sum()
