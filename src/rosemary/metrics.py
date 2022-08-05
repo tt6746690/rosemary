@@ -337,7 +337,7 @@ def cluster_f1_score(model_generated_cluster_labels, target_labels, feature_coll
     return F1
 
 
-def metrics_grounding(label, score, image_shape, device='cuda'):
+def metrics_grounding(label, score, image_shape, device='cpu', ts=[.5], reduce=True):
     """Computes metric for detection tasks
         label        (n_samples, 4)
             assume label comes in the form of bounding boxes.
@@ -380,7 +380,6 @@ def metrics_grounding(label, score, image_shape, device='cuda'):
     metrics['N'] = len(label)
     
     IoUs, mIoU = [], []
-    ts = [.1,.2,.3,.4,.5]
     from tqdm import tqdm
     for mask, sim in tqdm(zip(masks, score), total=len(masks)):
         if device == 'gpu':
@@ -389,9 +388,15 @@ def metrics_grounding(label, score, image_shape, device='cuda'):
         ious, miou = mask_ious_fn(mask, sim, ts)
         IoUs.append(ious)
         mIoU.append(miou)
+
     for i, t in enumerate(ts):
-        metrics[f"IoU@{t}"] = np.mean([x[i] for x in IoUs])    
-    metrics[f"mIoU"] = np.mean(mIoU)
+        metrics[f"IoU@{t}"] = [x[i] for x in IoUs]
+    metrics["mIoU"] = mIoU
+
+    if reduce:
+        for i, t in enumerate(ts):
+            metrics[f"IoU@{t}"] = np.mean(metrics[f"IoU@{t}"])
+        metrics["mIoU"] = np.mean(metrics["mIoU"])
     
     return metrics
 

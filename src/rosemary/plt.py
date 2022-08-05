@@ -129,8 +129,10 @@ def plt_det(fig, ax, image, boxes, labels=None, masks=None):
     if masks is not None:
         for i in range(N):
             mask = masks[i]
+            mask = (mask - np.min(mask))/np.ptp(mask)
             mask = np.ma.masked_where(mask==0, mask).astype(np.uint8)
-            ax.imshow(mask, cmap='jet', alpha=.4)
+            im = ax.imshow(mask, cmap='jet', alpha=.4)
+            fig.colorbar(im, cax=plt_scaled_colobar_ax(ax))
 
 
 def bbv_add_label(img, label, bbox, draw_bg=True, text_bg_color=(255, 255, 255), 
