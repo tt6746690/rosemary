@@ -439,12 +439,14 @@ def torch_ndarray_to_tensor(x):
 def torch_box_to_mask(box, image_shape):
     """Convert a list of boxes to a single mask of `image_shape`
             boxes    (#boxes, 4)
+
+        `image_shape` Union[List[int], torch.Tensor]
     """
     import torch
     if box.ndim != 2:
         raise ValueError('`boxes` should be (#boxes, 4)')
     mask = torch.zeros(
-        image_shape, dtype=torch.bool, device=box.device)
+        *image_shape, dtype=torch.bool, device=box.device)
     for b in box.to(int): # potentially rounding error.
         mask[b[1]:b[3],b[0]:b[2]] = True
     return mask

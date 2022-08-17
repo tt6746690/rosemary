@@ -1,3 +1,4 @@
+import itertools
 import os
 import random
 import numpy as np
@@ -49,14 +50,41 @@ def torch_tensor_to_ndarray(x):
 
 def torch_cat_dicts(L):
     """Concatenates a list of dictionary of torch tensors
-            L = [{k: v1}, {k: v2}, ...] to {k: [v1; v2]} """
+            L = [{k: v1}, {k: v2}, ...]       to {k: torch.as_tensor([v1; v2])}
+            L = [{k: [v1,v2]}, {k: [v3,v4]}, ...] to {k: [v1;v2;v3;v4]} 
+            
+        ```
+        a = torch.as_tensor([1,2])
+        b = torch.as_tensor([[1,2,3,4],[5,6,7,8]])
+        e = {'a': a, 'b': b, 'a_list': list(a), 'b_list': list(b)}
+        L = [e,e]
+        torch_cat_dicts(L)
+        # {'a': tensor([1, 2, 1, 2]),
+        #  'b': tensor([[1, 2, 3, 4],
+        #          [5, 6, 7, 8],
+        #          [1, 2, 3, 4],
+        #          [5, 6, 7, 8]]),
+        #  'a_list': [tensor(1), tensor(2), tensor(1), tensor(2)],
+        #  'b_list': [tensor([1, 2, 3, 4]),
+        #   tensor([5, 6, 7, 8]),
+        #   tensor([1, 2, 3, 4]),
+        #   tensor([5, 6, 7, 8])]}
+        ```
+    """
     d = {}
     if L:
         K = L[0].keys()
-        cat_fns = [torch.hstack if L[0][k].ndim == 0 else torch.cat
-                   for k in K]
-        for cat_fn, k in zip(cat_fns, K):
-            d[k] = cat_fn([x[k] for x in L])
+        for k in K:
+            batch_is_a_list = isinstance(L[0][k], list)
+            elem_ndim = list(L[0][k])[0].ndim
+            if batch_is_a_list:
+                cat_fn = list
+            else:
+                cat_fn = torch.hstack if elem_ndim == 0 else torch.cat
+            tensors = [x[k] for x in L]
+            if batch_is_a_list:
+                tensors = list(itertools.chain.from_iterable(tensors))
+            d[k] = cat_fn(tensors)
     return d
 
 
