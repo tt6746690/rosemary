@@ -56,7 +56,8 @@ def torch_cat_dicts(L):
         ```
         a = torch.as_tensor([1,2])
         b = torch.as_tensor([[1,2,3,4],[5,6,7,8]])
-        e = {'a': a, 'b': b, 'a_list': list(a), 'b_list': list(b)}
+        c = torch.tensor(1)
+        e = {'a': a, 'b': b, 'c': c, 'a_list': list(a), 'b_list': list(b)}
         L = [e,e]
         torch_cat_dicts(L)
         # {'a': tensor([1, 2, 1, 2]),
@@ -64,6 +65,7 @@ def torch_cat_dicts(L):
         #          [5, 6, 7, 8],
         #          [1, 2, 3, 4],
         #          [5, 6, 7, 8]]),
+        #  'c': tensor([1, 1]),
         #  'a_list': [tensor(1), tensor(2), tensor(1), tensor(2)],
         #  'b_list': [tensor([1, 2, 3, 4]),
         #   tensor([5, 6, 7, 8]),
@@ -76,10 +78,11 @@ def torch_cat_dicts(L):
         K = L[0].keys()
         for k in K:
             batch_is_a_list = isinstance(L[0][k], list)
-            elem_ndim = list(L[0][k])[0].ndim
             if batch_is_a_list:
+                elem_ndim = list(L[0][k])[0].ndim
                 cat_fn = list
             else:
+                elem_ndim = L[0][k].ndim
                 cat_fn = torch.hstack if elem_ndim == 0 else torch.cat
             tensors = [x[k] for x in L]
             if batch_is_a_list:
