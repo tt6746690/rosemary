@@ -381,7 +381,11 @@ def metrics_grounding(label, score, image_shape, device='cpu', ts=[.5], reduce=T
     
     IoUs, mIoU = [], []
     from tqdm import tqdm
-    for mask, sim in tqdm(zip(masks, score), total=len(masks)):
+    from .jpt import jpt_in_notebook
+    iterator = zip(masks, score)
+    if jpt_in_notebook():
+        iterator = tqdm(iterator, total=len(masks))
+    for mask, sim in iterator:
         if device == 'gpu':
             mask = mask.to(device, non_blocking=True)
             sim = sim.to(device, non_blocking=True)

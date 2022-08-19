@@ -184,6 +184,8 @@ def jpt_argparse_from_config(cmd=None,
         if type(v) == bool:
             parser.add_argument(f'--{k}', default=v, action='store_true')
             parser.add_argument(f'--no-{k}', dest=k, action='store_false')
+        elif v is None: # Assume string arguments by default.
+            parser.add_argument(f'--{k}', type=str, default=v)
         else:
             parser.add_argument(f'--{k}', type=type(v), default=v)
 
