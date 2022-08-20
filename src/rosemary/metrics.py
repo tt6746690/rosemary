@@ -380,6 +380,7 @@ def metrics_grounding(label, score, image_shape, device='cpu', ts=[.5], reduce=T
     metrics['N'] = len(label)
     
     IoUs, mIoU = [], []
+    cnrs = []
     from tqdm import tqdm
     from .jpt import jpt_in_notebook
     iterator = zip(masks, score)
@@ -390,19 +391,35 @@ def metrics_grounding(label, score, image_shape, device='cpu', ts=[.5], reduce=T
             mask = mask.to(device, non_blocking=True)
             sim = sim.to(device, non_blocking=True)
         ious, miou = mask_ious_fn(mask, sim, ts)
+        cnr = np_contrast_to_noise_ratio(mask, sim)
         IoUs.append(ious)
         mIoU.append(miou)
+        cnrs.append(cnr)
 
     for i, t in enumerate(ts):
         metrics[f"IoU@{t}"] = [x[i] for x in IoUs]
     metrics["mIoU"] = mIoU
+    metrics["cnr"] = cnrs
 
     if reduce:
         for i, t in enumerate(ts):
             metrics[f"IoU@{t}"] = np.mean(metrics[f"IoU@{t}"])
         metrics["mIoU"] = np.mean(metrics["mIoU"])
+        metrics["cnr"] = np.mean(metrics["cnr"])
     
     return metrics
+
+
+def np_contrast_to_noise_ratio(label, score):
+    """Compute CNR in https://arxiv.org/abs/2204.09817 
+        Here `label` is ground truth mask converted from bbox
+        and `score` is predicted similarity values. 
+    This metric doesn't require thresholding `score`. """
+    A, B = score[label],score[~label]
+    mu_A, var_A = np.nanmean(A), np.nanvar(A)
+    mu_B, var_B = np.nanmean(B), np.nanvar(B)
+    cnr = np.abs(mu_A-mu_B) / (var_A+var_B)**.5
+    return cnr
 
 
 def np_mask_iou(label, score, t=.5, ϵ=1e-6):
