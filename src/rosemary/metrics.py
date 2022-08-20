@@ -418,7 +418,7 @@ def np_contrast_to_noise_ratio(label, score):
     A, B = score[label],score[~label]
     mu_A, var_A = np.nanmean(A), np.nanvar(A)
     mu_B, var_B = np.nanmean(B), np.nanvar(B)
-    cnr = np.abs(mu_A-mu_B) / (var_A+var_B)**.5
+    cnr = mu_A-mu_B / (var_A+var_B)**.5
     return cnr
 
 
