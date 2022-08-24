@@ -414,11 +414,13 @@ def np_contrast_to_noise_ratio(label, score):
     """Compute CNR in https://arxiv.org/abs/2204.09817 
         Here `label` is ground truth mask converted from bbox
         and `score` is predicted similarity values. 
-    This metric doesn't require thresholding `score`. """
+    This metric doesn't require thresholding `score`. 
+    Yet to handle situation when `label` has `np.nan`
+    """
     A, B = score[label],score[~label]
     mu_A, var_A = np.nanmean(A), np.nanvar(A)
     mu_B, var_B = np.nanmean(B), np.nanvar(B)
-    cnr = mu_A-mu_B / (var_A+var_B)**.5
+    cnr = np.abs(mu_A-mu_B) / (var_A+var_B)**.5
     return cnr
 
 
