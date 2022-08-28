@@ -1,3 +1,6 @@
+from typing import List, Dict
+import dataclasses
+
 import itertools
 import os
 import random
@@ -7,7 +10,7 @@ import torch
 __all__ = [
     'torch_unnormalize',
     'torch_tensor_to_ndarray',
-    'torch_cat_dicts',
+    'torch_combine_batches',
     'torch_set_random_seed',
     'torch_configure_cuda',
     'torch_input_grad',
@@ -47,12 +50,17 @@ def torch_tensor_to_ndarray(x):
         x = x.detach().to('cpu').numpy()
     return x
 
-
-def torch_cat_dicts(L):
-    """Concatenates a list of dictionary of torch tensors
-            L = [{k: v1}, {k: v2}, ...]       to {k: torch.as_tensor([v1; v2])}
-            L = [{k: [v1,v2]}, {k: [v3,v4]}, ...] to {k: [v1;v2;v3;v4]} 
+def torch_combine_batches(L):
+    """Combine `[b, ...]` where `b` is a batch.
+        This function differs from `default_collate` in that it **avoids**
+            - adding batch dimension.
+            - avoids converting to `torch.Tensor` when possible
+        Also handles the case where `b` is a `transformers.ModelOutput`
             
+        For example:
+            L = [{k: v1}, {k: v2}, ...]           -> {k: torch.as_tensor([v1; v2])}
+            L = [{k: [v1,v2]}, {k: [v3,v4]}, ...] -> {k: [v1;v2;v3;v4]} 
+
         ```
         a = torch.as_tensor([1,2])
         b = torch.as_tensor([[1,2,3,4],[5,6,7,8]])
@@ -71,24 +79,71 @@ def torch_cat_dicts(L):
         #   tensor([5, 6, 7, 8]),
         #   tensor([1, 2, 3, 4]),
         #   tensor([5, 6, 7, 8])]}
+
+        ```
+        # test `ModelOutput`
+        from rosemary import torch_combine_batches
+        L = [{'a': outputs}, {'a': outputs}]
+        o = torch_combine_batches(L)
+        o = o['a']
+        print('o.image_embeds', [(k,tuple(v.shape)) for k, v in o.image_embeds])
+        print('o.text_embeds', tuple(o.text_embeds.shape))
+        fpnoutput = o.vision_model_output
+        print('o.fpn_output', [(k,v.shape) for k,v in fpnoutput.fpn_output])
+        for k, v in fpnoutput.vision_model_output.items():
+            shapes = v.shape if isinstance(v, torch.Tensor) else [tuple(x.shape) for x in v]
+            print(f'o.vision_model.{k}', shapes)
+        for k, v in o.text_model_output.items():
+            shapes = v.shape if isinstance(v, torch.Tensor) else [tuple(x.shape) for x in v]
+            print(f'o.text_model.{k}', shapes)
         ```
     """
-    d = {}
-    if L:
-        K = L[0].keys()
-        for k in K:
-            batch_is_a_list = isinstance(L[0][k], list)
-            if batch_is_a_list:
-                elem_ndim = list(L[0][k])[0].ndim
-                cat_fn = list
+    b = L[0]
+    if isinstance(b, torch.Tensor):
+        cat_fn = torch.hstack if b.ndim == 0 else torch.cat
+        return cat_fn(L)
+    elif isinstance(b, (list, tuple)):
+        return list(itertools.chain.from_iterable(L))
+    # try to reduce extra dependency on `transformers` package.
+    # elif isinstance(b, ModelOutput):
+    elif isinstance(b, dict) and dataclasses.is_dataclass(b):
+        cls = type(b)
+        o = {}
+        for k in b.keys():
+            l = [b[k] for b in L]
+            # Note we can not move these cases to base case of this function
+            # since the behavior is different when inside/outside `ModelOutput`
+            
+            # special case where l := [[(k, v1), ...], ...]
+            # consider `l` as a dictionary -> [(k, [v1;v2;...])]
+            is_list_of_two_tuple = lambda l: \
+                isinstance(l, list) and all((isinstance(li, tuple) and len(li)==2) for li in l)
+            # special case when l := [(v1,v2,...),(va,vb,...),...] where values are tensors.
+            # do not combine `l` as [v1,v2,...,va,vb,...].
+            # consider `l` as a dictionary -> [cat(v1;va,...), cat(v2;vb,...)]
+            is_tuple_of_tensor = lambda l: \
+                isinstance(l, tuple) and all(isinstance(li, torch.Tensor) for li in l)
+
+            if all(is_list_of_two_tuple(li) for li in l):
+                l: List[Dict] = [dict(x) for x in l] # combine batches 
+                l = torch_combine_batches(l)
+                l = list(zip(l.keys(), l.values()))  # return to 2-tuple repr.
+                o[k] = l
+            elif all(is_tuple_of_tensor(li) for li in l):
+                l = [torch.cat([li[k] for li in l]) for k in range(len(l[0]))]
+                o[k] = l
             else:
-                elem_ndim = L[0][k].ndim
-                cat_fn = torch.hstack if elem_ndim == 0 else torch.cat
-            tensors = [x[k] for x in L]
-            if batch_is_a_list:
-                tensors = list(itertools.chain.from_iterable(tensors))
-            d[k] = cat_fn(tensors)
-    return d
+                l = torch_combine_batches(l)
+                o[k] = l
+        return cls(**o)
+    elif isinstance(b, dict):
+        d = {}
+        for k in b.keys():
+            l = [b[k] for b in L]
+            d[k] = torch_combine_batches(l)
+        return d
+    else:
+        raise ValueError(f'`combine_batches` does not support {type(b)}')
 
 
 def torch_set_random_seed(seed):
