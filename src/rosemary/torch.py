@@ -50,7 +50,14 @@ def torch_tensor_to_ndarray(x):
         x = x.detach().to('cpu').numpy()
     return x
 
-def torch_combine_batches(L):
+def torch_non_batch_dims_match(L):
+    """Return True if list of Tensor has same non-batch dimensions."""
+    non_batch_dims = [tuple(x.shape[1:]) for x in L]
+    shapes_match = all(x == non_batch_dims[0] for x in non_batch_dims)
+    return shapes_match
+
+
+def torch_combine_batches(L, apply_to_tensor_fn=None):
     """Combine `[b, ...]` where `b` is a batch.
         This function differs from `default_collate` in that it **avoids**
             - adding batch dimension.
@@ -98,12 +105,24 @@ def torch_combine_batches(L):
             print(f'o.text_model.{k}', shapes)
         ```
     """
+    apply_to_tensor_list_fn = lambda L: \
+        [apply_to_tensor_fn(x) for x in L] if (apply_to_tensor_fn is not None) and \
+            all(isinstance(Li, torch.Tensor) for Li in L) else L
+
     b = L[0]
     if isinstance(b, torch.Tensor):
-        cat_fn = torch.hstack if b.ndim == 0 else torch.cat
-        return cat_fn(L)
+        if apply_to_tensor_fn is not None:
+            L = [apply_to_tensor_fn(x) for x in L]
+        if b.ndim == 0:
+            return torch.hstack(L)
+        else:
+            # handles List[Tensor] with varying shapes, e.g., seq_len different in each batch.
+            cat_fn = torch.cat if torch_non_batch_dims_match(L) else list
+            return cat_fn(L)
     elif isinstance(b, (list, tuple)):
-        return list(itertools.chain.from_iterable(L))
+        L = list(itertools.chain.from_iterable(L))
+        L = apply_to_tensor_list_fn(L)
+        return L
     # try to reduce extra dependency on `transformers` package.
     # elif isinstance(b, ModelOutput):
     elif isinstance(b, dict) and dataclasses.is_dataclass(b):
@@ -126,21 +145,26 @@ def torch_combine_batches(L):
 
             if all(is_list_of_two_tuple(li) for li in l):
                 l: List[Dict] = [dict(x) for x in l] # combine batches 
-                l = torch_combine_batches(l)
+                l = torch_combine_batches(l, apply_to_tensor_fn)
                 l = list(zip(l.keys(), l.values()))  # return to 2-tuple repr.
                 o[k] = l
             elif all(is_tuple_of_tensor(li) for li in l):
-                l = [torch.cat([li[k] for li in l]) for k in range(len(l[0]))]
+                def _cat_fn(k):
+                    q = [li[k] for li in l]
+                    q = apply_to_tensor_list_fn(q)
+                    # take into account variable shapes when doing torch.cat
+                    return torch.cat(q) if torch_non_batch_dims_match(q) else q
+                l = tuple(_cat_fn(k) for k in range(len(l[0])))
                 o[k] = l
             else:
-                l = torch_combine_batches(l)
+                l = torch_combine_batches(l, apply_to_tensor_fn)
                 o[k] = l
         return cls(**o)
     elif isinstance(b, dict):
         d = {}
         for k in b.keys():
             l = [b[k] for b in L]
-            d[k] = torch_combine_batches(l)
+            d[k] = torch_combine_batches(l, apply_to_tensor_fn)
         return d
     else:
         raise ValueError(f'`combine_batches` does not support {type(b)}')
