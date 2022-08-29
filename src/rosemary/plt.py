@@ -124,7 +124,7 @@ def plt_det(fig, ax, image, boxes, labels=None, masks=None):
             image, bbox, c, thickness=line_thickness, is_opaque=False, alpha=.5)
         if labels is not None and labels[i]:
             image = bbv_add_label(
-                image, labels[i], bbox, draw_bg=True, text_bg_color=c, top=True)
+                image, labels[i], bbox, draw_bg=True, text_bg_color=c, top=False)
     ax.imshow(image)
     if masks is not None:
         for i in range(N):

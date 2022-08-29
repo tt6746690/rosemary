@@ -72,20 +72,28 @@ def torch_combine_batches(L, apply_to_tensor_fn=None):
         a = torch.as_tensor([1,2])
         b = torch.as_tensor([[1,2,3,4],[5,6,7,8]])
         c = torch.tensor(1)
-        e = {'a': a, 'b': b, 'c': c, 'a_list': list(a), 'b_list': list(b)}
+        d = torch.as_tensor([[1,2]])
+        e = {'a': a, 'b': b, 'c': c, 'd': d ,
+            'a_list': list(a), 'b_list': list(b), 'dd_tuple': tuple([d,d+10]),}
         L = [e,e]
-        torch_cat_dicts(L)
+        torch_combine_batches(L)
         # {'a': tensor([1, 2, 1, 2]),
-        #  'b': tensor([[1, 2, 3, 4],
-        #          [5, 6, 7, 8],
-        #          [1, 2, 3, 4],
-        #          [5, 6, 7, 8]]),
-        #  'c': tensor([1, 1]),
-        #  'a_list': [tensor(1), tensor(2), tensor(1), tensor(2)],
-        #  'b_list': [tensor([1, 2, 3, 4]),
-        #   tensor([5, 6, 7, 8]),
-        #   tensor([1, 2, 3, 4]),
-        #   tensor([5, 6, 7, 8])]}
+        # 'b': tensor([[1, 2, 3, 4],
+        #         [5, 6, 7, 8],
+        #         [1, 2, 3, 4],
+        #         [5, 6, 7, 8]]),
+        # 'c': tensor([1, 1]),
+        # 'd': tensor([[1, 2],
+        #         [1, 2]]),
+        # 'a_list': [tensor(1), tensor(2), tensor(1), tensor(2)],
+        # 'b_list': [tensor([1, 2, 3, 4]),
+        # tensor([5, 6, 7, 8]),
+        # tensor([1, 2, 3, 4]),
+        # tensor([5, 6, 7, 8])],
+        # 'aa_tuple': (tensor([[1, 2],
+        #         [1, 2]]),
+        # tensor([[11, 12],
+        #         [11, 12]]))}
 
         ```
         # test `ModelOutput`
@@ -109,6 +117,11 @@ def torch_combine_batches(L, apply_to_tensor_fn=None):
         [apply_to_tensor_fn(x) for x in L] if (apply_to_tensor_fn is not None) and \
             all(isinstance(Li, torch.Tensor) for Li in L) else L
 
+    is_list_of_two_tuple = lambda l: \
+        isinstance(l, list) and all((isinstance(li, tuple) and len(li)==2) for li in l)
+    is_tuple_of_tensor = lambda l: \
+        isinstance(l, tuple) and all(isinstance(li, torch.Tensor) for li in l)
+
     b = L[0]
     if isinstance(b, torch.Tensor):
         if apply_to_tensor_fn is not None:
@@ -119,9 +132,19 @@ def torch_combine_batches(L, apply_to_tensor_fn=None):
             # handles List[Tensor] with varying shapes, e.g., seq_len different in each batch.
             cat_fn = torch.cat if torch_non_batch_dims_match(L) else list
             return cat_fn(L)
-    elif isinstance(b, (list, tuple)):
+    elif isinstance(b, list):
         L = list(itertools.chain.from_iterable(L))
         L = apply_to_tensor_list_fn(L)
+        return L
+    elif all(is_tuple_of_tensor(l) for l in L):
+        # tuple indicates a single sample/instance, unlike list.
+        # Didn't account case when tensor.ndim == 0!
+        def _cat_fn(k):
+            q = [li[k] for li in L]
+            q = apply_to_tensor_list_fn(q)
+            # take into account variable shapes when doing torch.cat
+            return torch.cat(q) if torch_non_batch_dims_match(q) else q
+        L = tuple(_cat_fn(k) for k in range(len(L[0])))
         return L
     # try to reduce extra dependency on `transformers` package.
     # elif isinstance(b, ModelOutput):
@@ -133,22 +156,17 @@ def torch_combine_batches(L, apply_to_tensor_fn=None):
             # Note we can not move these cases to base case of this function
             # since the behavior is different when inside/outside `ModelOutput`
             
-            # special case where l := [[(k, v1), ...], ...]
-            # consider `l` as a dictionary -> [(k, [v1;v2;...])]
-            is_list_of_two_tuple = lambda l: \
-                isinstance(l, list) and all((isinstance(li, tuple) and len(li)==2) for li in l)
-            # special case when l := [(v1,v2,...),(va,vb,...),...] where values are tensors.
-            # do not combine `l` as [v1,v2,...,va,vb,...].
-            # consider `l` as a dictionary -> [cat(v1;va,...), cat(v2;vb,...)]
-            is_tuple_of_tensor = lambda l: \
-                isinstance(l, tuple) and all(isinstance(li, torch.Tensor) for li in l)
-
             if all(is_list_of_two_tuple(li) for li in l):
+                # special case where l := [[(k, v1), ...], ...]
+                # consider `l` as a dictionary -> [(k, [v1;v2;...])]
                 l: List[Dict] = [dict(x) for x in l] # combine batches 
                 l = torch_combine_batches(l, apply_to_tensor_fn)
                 l = list(zip(l.keys(), l.values()))  # return to 2-tuple repr.
                 o[k] = l
             elif all(is_tuple_of_tensor(li) for li in l):
+                # special case when l := [(v1,v2,...),(va,vb,...),...] where values are tensors.
+                # do not combine `l` as [v1,v2,...,va,vb,...].
+                # consider `l` as a dictionary -> [cat(v1;va,...), cat(v2;vb,...)]
                 def _cat_fn(k):
                     q = [li[k] for li in l]
                     q = apply_to_tensor_list_fn(q)

@@ -156,7 +156,7 @@ def jpt_argparse_from_config(cmd=None,
         cfg = jpt_argparse_from_config(cmd="--config=config.yaml",
                                        parser_addargs_callback)
     """
-    from omegaconf import OmegaConf
+    from omegaconf import OmegaConf, ListConfig, DictConfig
     
     # Parse any conf_file specification
     # We make this parser with add_help=False so that
@@ -181,13 +181,18 @@ def jpt_argparse_from_config(cmd=None,
         parents=[conf_parser])
 
     for k, v in tree_flatten(cfg).items():
-        if type(v) == bool:
+        if isinstance(v, ListConfig):
+            v = OmegaConf.to_container(v)
+        if isinstance(v, bool):
             parser.add_argument(f'--{k}', default=v, action='store_true')
             parser.add_argument(f'--no-{k}', dest=k, action='store_false')
+        elif isinstance(v, list):
+            elem_type = type(v[0]) if v else str
+            parser.add_argument(f'--{k}', default=v, type=lambda s: [elem_type(x) for x in s.split(',')])
         elif v is None: # Assume string arguments by default.
-            parser.add_argument(f'--{k}', type=str, default=v)
+            parser.add_argument(f'--{k}', default=v, type=str)
         else:
-            parser.add_argument(f'--{k}', type=type(v), default=v)
+            parser.add_argument(f'--{k}', default=v, type=type(v))
 
     parser_addargs_callback(parser)
     
