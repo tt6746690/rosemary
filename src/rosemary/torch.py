@@ -207,6 +207,9 @@ def torch_configure_cuda(gpu_id):
     if not torch.cuda.is_available():
         raise AssertionError(f'GPU not available!')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # for reproducibility.
+    torch.use_deterministic_algorithms(True)
     return device
 
 
