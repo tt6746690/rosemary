@@ -209,7 +209,7 @@ def torch_configure_cuda(gpu_id):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # for reproducibility.
-    torch.use_deterministic_algorithms(True)
+    torch.use_deterministic_algorithms(True, warn_only=True)
     return device
 
 
