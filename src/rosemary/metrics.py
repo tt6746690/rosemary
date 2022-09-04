@@ -348,13 +348,8 @@ def metrics_grounding(label, score, image_shape, device='cpu', ts=[.5], n_jobs=1
             similarity mapping.
         image_shape  (n_samples, 2)
             in (h, w) format
-
-        using device=`cuda` ~40x faster than device='cpu'
-        but needs to be careful about memory usage as `score` 
-        may be a very long list and `d=h*w` might be large.
     """
     from .jpt import jpt_in_notebook
-    from tqdm import tqdm
 
     if not isinstance(label, list):
         raise ValueError('`label` should be List<Tensor|ndarray>')
@@ -373,27 +368,29 @@ def metrics_grounding(label, score, image_shape, device='cpu', ts=[.5], n_jobs=1
             np_box_to_mask(box, shape)
             for box, shape in zip(label, image_shape)]
     
-    N = len(label)
     metrics = {}
-    metrics['N'] = N
+    metrics['N'] = len(label)
 
-    def metrics_grounding_compute_metric_step(args):
-        m, s = args
+    def metrics_grounding_step_fn(args):
+        m, s, ts = args
         ious, miou = np_mask_ious(m, s, ts)
         cnr = np_contrast_to_noise_ratio(m, s)
         return {'IoUs': ious, 'mIoU': miou, 'cnr': cnr}
-    
-    results = joblib_parallel_process(
-        fn=metrics_grounding_compute_metric_step,
-        iterable=zip(label, score),
-        n_jobs=n_jobs,
-        use_tqdm=True if jpt_in_notebook() else False)
 
+    results = joblib_parallel_process(
+        fn=metrics_grounding_step_fn,
+        iterable=zip(label, score, itertools.repeat(ts)),
+        n_jobs=n_jobs,
+        prefer='threads',
+        use_tqdm=True if jpt_in_notebook() else False)
     IoUs = [x['IoUs'] for x in results]
+    mIoU = [x['mIoU'] for x in results]
+    cnr  = [x['cnr']  for x in results]
+
     for i, t in enumerate(ts):
         metrics[f"IoU@{t}"] = [x[i] for x in IoUs]
-    metrics["mIoU"] = [x['mIoU'] for x in results]
-    metrics["cnr"] = [x['cnr'] for x in results]
+    metrics["mIoU"] = mIoU
+    metrics["cnr"] = cnr
 
     if reduce:
         for i, t in enumerate(ts):
