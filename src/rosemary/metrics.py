@@ -349,7 +349,12 @@ def metrics_grounding(label, score, image_shape, device='cpu', ts=[.5], n_jobs=1
         image_shape  (n_samples, 2)
             in (h, w) format
     """
+    from joblib import Parallel, delayed
     from .jpt import jpt_in_notebook
+    if jpt_in_notebook():
+        from tqdm import tqdm
+    else:
+        tqdm = lambda x: x
 
     if not isinstance(label, list):
         raise ValueError('`label` should be List<Tensor|ndarray>')
@@ -362,6 +367,8 @@ def metrics_grounding(label, score, image_shape, device='cpu', ts=[.5], n_jobs=1
         label = [torch_tensor_to_ndarray(x) for x in label]
     if isinstance(score, list):
         score = [torch_tensor_to_ndarray(x) for x in score]
+    if isinstance(image_shape, list):
+        image_shape = [torch_tensor_to_ndarray(x) for x in image_shape]
         
     if label[0].shape[-1] == 4: # bbox -> mask
         label = [
@@ -371,21 +378,12 @@ def metrics_grounding(label, score, image_shape, device='cpu', ts=[.5], n_jobs=1
     metrics = {}
     metrics['N'] = len(label)
 
-    def metrics_grounding_step_fn(args):
-        m, s, ts = args
-        ious, miou = np_mask_ious(m, s, ts)
-        cnr = np_contrast_to_noise_ratio(m, s)
-        return {'IoUs': ious, 'mIoU': miou, 'cnr': cnr}
-
-    results = joblib_parallel_process(
-        fn=metrics_grounding_step_fn,
-        iterable=zip(label, score, itertools.repeat(ts)),
-        n_jobs=n_jobs,
-        prefer='threads',
-        use_tqdm=True if jpt_in_notebook() else False)
-    IoUs = [x['IoUs'] for x in results]
-    mIoU = [x['mIoU'] for x in results]
-    cnr  = [x['cnr']  for x in results]
+    with Parallel(n_jobs=n_jobs, prefer='threads') as parallel:
+        iterable = list(zip(label, score))
+        IoUs, mIoU = zip(*parallel(delayed(np_mask_ious)(m, s, ts) \
+            for m, s in tqdm(iterable)))
+        cnr = parallel(delayed(np_contrast_to_noise_ratio)(m, s) \
+            for m, s in tqdm(iterable))
 
     for i, t in enumerate(ts):
         metrics[f"IoU@{t}"] = [x[i] for x in IoUs]
