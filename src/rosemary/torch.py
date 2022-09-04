@@ -1,3 +1,4 @@
+from packaging import version
 from typing import List, Dict
 import dataclasses
 
@@ -208,8 +209,10 @@ def torch_configure_cuda(gpu_id):
         raise AssertionError(f'GPU not available!')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # for reproducibility.
-    torch.use_deterministic_algorithms(True, warn_only=True)
+    if version.parse(torch.__version__) >= version.parse("1.11.0"):
+        torch.use_deterministic_algorithms(True, warn_only=True)
+    else:
+        torch.use_deterministic_algorithms(True)
     return device
 
 
