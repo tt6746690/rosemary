@@ -5,6 +5,7 @@ __all__ = [
     'dict_iterated_getitem',
     'dict_iterated_setitem',
     'set_statistics',
+    "dict_get_list_of_items",
 ]
 
 
@@ -75,3 +76,11 @@ def set_statistics(s1, s2):
     ]
     for x, y in info:
         print(f'{x:6} {y}')
+
+
+def dict_get_list_of_items(K, L, Q):
+    """Given a dictionary `d` decomposed to two lists `{k:v for k, v in zip(K, L)}`,
+        and a list of query keys `KQ`, return a list of corresponding values in `d`."""
+    container_cls = type(L)
+    indices = [K.index(k) for k in Q]
+    return container_cls(L[i] for i in indices)
