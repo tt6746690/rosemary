@@ -78,7 +78,7 @@ def plt_slices(vol, colorbar=True):
     return fig, axs
 
 
-def plt_det(fig, ax, image, boxes, labels=None, masks=None):
+def plt_det(fig, ax, image, boxes, labels=None, masks=None, colors=None):
     """Draw bounding box over image.
     
         `boxes`    List<List[4]>
@@ -93,9 +93,11 @@ def plt_det(fig, ax, image, boxes, labels=None, masks=None):
     from .torch import torch_tensor_to_ndarray, torch_get_dimensions
     from .np import np_trim_upper
 
-
+    N = len(boxes)
     C, H, W = torch_get_dimensions(image)
 
+    if isinstance(labels, (str, int)):
+        labels = [labels]*N
     if isinstance(labels, torch.Tensor):
         labels = torch_tensor_to_ndarray(labels)
     if isinstance(boxes, torch.Tensor):
@@ -113,8 +115,9 @@ def plt_det(fig, ax, image, boxes, labels=None, masks=None):
             image = np_trim_upper(np.stack((image.squeeze(),)*3, axis=-1), α=.001)
         image = (255*image).astype(np.uint8)
 
-    N = len(boxes)
-    colors = ((np.random.random((N, 3))*0.6+0.4)*255)
+    
+    if colors is None:
+        colors = ((np.random.random((N, 3))*0.6+0.4)*255)
 
     line_thickness = max(int(2*min(H, W)/256), 1)
     
@@ -127,12 +130,11 @@ def plt_det(fig, ax, image, boxes, labels=None, masks=None):
                 image, labels[i], bbox, draw_bg=True, text_bg_color=c, top=False)
     ax.imshow(image)
     if masks is not None:
-        for i in range(N):
-            mask = masks[i]
-            mask = (mask - np.min(mask))/np.ptp(mask)
-            mask = np.ma.masked_where(mask==0, mask).astype(np.uint8)
-            im = ax.imshow(mask, cmap='jet', alpha=.4)
-            fig.colorbar(im, cax=plt_scaled_colobar_ax(ax))
+        mask = masks
+        mask = (mask - np.min(mask))/np.ptp(mask)
+        mask = np.ma.masked_where(mask==0, mask).astype(np.uint8)
+        im = ax.imshow(mask, cmap='jet', alpha=.4)
+        fig.colorbar(im, cax=plt_scaled_colobar_ax(ax))
 
 
 def bbv_add_label(img, label, bbox, draw_bg=True, text_bg_color=(255, 255, 255), 
