@@ -18,7 +18,7 @@ from .parallel import *
 try:
     from .torch_transform import *
     from .torch import *
-    fron .torchvision import *
+    from .torchvision import *
 except ImportError as e:
     from warnings import warn
     warn(f'Install `torch` for functionalities dependent on torch')
