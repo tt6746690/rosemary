@@ -18,6 +18,7 @@ class AnchorGeneratorFixedImageSize(AnchorGenerator):
         """Generate `anchors` given `feature_maps` computed from images with fixed `image_size`. """
         grid_sizes = [feature_map.shape[-2:] for feature_map in feature_maps]
         dtype, device = feature_maps[0].dtype, feature_maps[0].device
+        self.set_cell_anchors(dtype, device)
         strides = [
             [torch.empty((), dtype=torch.int64, device=device).fill_(image_size[0] // g[0]),
              torch.empty((), dtype=torch.int64, device=device).fill_(image_size[1] // g[1]),]
