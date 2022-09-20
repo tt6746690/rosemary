@@ -16,6 +16,7 @@ __all__ = [
     'torch_configure_cuda',
     'torch_input_grad',
     'torch_get_dimensions',
+    "torch_list_of_tensor_shapes",
 ]
 
 
@@ -44,6 +45,10 @@ def torch_get_dimensions(img):
         channels = 1 if img.ndim == 2 else img.shape[-3]
         height, width = img.shape[-2:]
         return [channels, height, width]
+
+
+def torch_list_of_tensor_shapes(l):
+    return [tuple(x.shape) for x in l]
 
 
 def torch_tensor_to_ndarray(x):
