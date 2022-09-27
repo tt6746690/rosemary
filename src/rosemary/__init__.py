@@ -14,6 +14,7 @@ from .pd import *
 from .plt import *
 from .tree import *
 from .parallel import *
+from .config import *
 
 try:
     from .torch_transform import *

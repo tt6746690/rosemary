@@ -187,12 +187,12 @@ def jpt_argparse_from_config(cmd=None,
             parser.add_argument(f'--{k}', default=v, action='store_true')
             parser.add_argument(f'--no-{k}', dest=k, action='store_false')
         elif isinstance(v, list):
+            from ast import literal_eval
             def eval_and_check(s):
                 l = literal_eval(s)
                 if (not isinstance(l, list)):
                     raise argparse.ArgumentError(f'argparse encountered invalid value for {k}')
                 return l
-            from ast import literal_eval
             parser.add_argument(f'--{k}', default=v, type=eval_and_check)
         elif v is None: # Assume string arguments by default.
             parser.add_argument(f'--{k}', default=v, type=str)

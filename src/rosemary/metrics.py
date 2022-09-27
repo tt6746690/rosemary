@@ -406,6 +406,11 @@ def np_contrast_to_noise_ratio(label, score):
     This metric doesn't require thresholding `score`. 
     Yet to handle situation when `label` has `np.nan`
     """
+    # If bbox are detroyed upon center-crop,
+    # just assign cnr=0 for this example.
+    # For 256->224, there is 2 such cases.
+    if label.sum() == 0:
+        return 0
     A, B = score[label],score[~label]
     mu_A, var_A = np.nanmean(A), np.nanvar(A)
     mu_B, var_B = np.nanmean(B), np.nanvar(B)
