@@ -8,6 +8,7 @@ __all__ = [
     'jpt_full_width',
     'jpt_suppress_warnings',
     'jpt_convert_to_py',
+    'jpt_plt_clear',
     'jpt_tsb_stop',
     'jpt_tsb_start',
     'jpt_tsb_restart',
@@ -67,6 +68,13 @@ def jpt_convert_to_py(ipynb_path):
             retcode = subprocess.call(shlex.split(cmd))
         except OSError as err:
             print(f'Execution failed: [{cmd}]')
+
+def jpt_plt_clear(fig):
+    if not jpt_in_notebook():
+        import matplotlib.pyplot as plt
+        plt.cla()
+        plt.clf()
+        plt.close(fig)
 
 
 def jpt_tsb_stop(port):
