@@ -6,6 +6,7 @@ __all__ = [
     'dict_iterated_setitem',
     'set_statistics',
     "dict_get_list_of_items",
+    "re_parse_float",
 ]
 
 
@@ -84,3 +85,11 @@ def dict_get_list_of_items(K, L, Q):
     container_cls = type(L)
     indices = [K.index(k) for k in Q]
     return container_cls(L[i] for i in indices)
+
+
+def re_parse_float(s, k, v=None):
+    """Parse string `s` for floating 'x' of form 'k=x' with defaut value `v`."""
+    import re
+    m = re.search(k+'=([+-]?[0-9]+([.][0-9]*)?|[.][0-9]+)', s)
+    x = float(m.groups()[0]) if m else v
+    return x
