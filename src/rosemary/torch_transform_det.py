@@ -26,6 +26,16 @@ import torchvision.transforms.functional as F
 
 from .torch import torch_get_dimensions
 
+## Deal with legacy code where the `InterpolationMode`
+#  does not exist yet.
+if not hasattr(F, 'InterpolationMode'):
+    from enum import Enum
+    class InterpolationMode(Enum):
+        NEREAST  = 0
+        BILINEAR = 2
+        BICUBIC  = 3
+    setattr(F, 'InterpolationMode', InterpolationMode)
+
 
 __all__ = [
     "crop_target",
