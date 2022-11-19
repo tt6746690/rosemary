@@ -7,6 +7,7 @@ __all__ = [
     'set_statistics',
     "dict_get_list_of_items",
     "re_parse_float",
+    "parse_kv_from_string",
 ]
 
 
@@ -93,3 +94,19 @@ def re_parse_float(s, k, v=None):
     m = re.search(k+'=([+-]?[0-9]+([.][0-9]*)?|[.][0-9]+)', s)
     x = float(m.groups()[0]) if m else v
     return x
+
+
+def parse_kv_from_string(s):
+    kvs = []
+    for i, segment in enumerate(s.split('_')):
+        if '=' in segment:
+            k, v = segment.split('=')
+            try:
+                v = float(v)
+            except:
+                pass
+            kvs.append((k, v))
+        else:
+            kvs.append((i, segment))
+    d = dict(kvs)
+    return d
