@@ -2,11 +2,12 @@ import pandas as pd
 import numpy as np
 
 __all__ = [
-    'pd_add_colwise_percentage',
-    'pd_column_locs',
-    'pd_dataset_split',
-    'pd_dataset_label_proportion',
-    'pd_apply_fn_to_list_flattened',
+    "pd_add_colwise_percentage",
+    "pd_column_locs",
+    "pd_dataset_split",
+    "pd_dataset_label_proportion",
+    "pd_apply_fn_to_list_flattened",
+    "pd_sort_rows_by_avg_ranking",
 ]
 
 def pd_add_colwise_percentage(df):
@@ -88,3 +89,20 @@ def pd_apply_fn_to_list_flattened(fn, df, by, col):
               .reindex(index=df[by])
               .reset_index())
     return dfe[col]
+
+
+def pd_sort_rows_by_avg_ranking(df, metrics_lower_the_better=tuple()):
+    """Sort rows of dataframe `df` by average of nuermical columns. """
+    cols = [x for x in df.columns]
+    def is_ascending(x):
+        # ascending=True if metrics lower the better
+        if isinstance(x,  tuple):
+            x = x[-1]
+        return x.startswith(tuple(metrics_lower_the_better))
+    ascendings = list(map(is_ascending, cols))
+    rankings = [df[col].rank(ascending=ascending).to_numpy() 
+                for col, ascending in zip(cols, ascendings)]
+    df = df.copy()
+    df.loc[:,'ranking'] = np.array(rankings).mean(0)
+    df = df.sort_values('ranking', ascending=True)
+    return df
