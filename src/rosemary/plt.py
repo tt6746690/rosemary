@@ -42,7 +42,7 @@ def plt_scaled_colobar_ax(ax):
     """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cax = divider.append_axes("right", size="7.5%", pad=0.05)
     return cax
 
 
@@ -101,7 +101,7 @@ def plt_det(fig, ax, image, boxes, labels=None, masks=None, colors=None):
     if isinstance(labels, torch.Tensor):
         labels = torch_tensor_to_ndarray(labels)
     if isinstance(boxes, torch.Tensor):
-        boxes = torch_tensor_to_ndarray(boxes).astype(int)
+        boxes = torch_tensor_to_ndarray(boxes)
     if isinstance(masks, torch.Tensor):
         masks = torch_tensor_to_ndarray(masks)
     if isinstance(image, Image.Image):
@@ -109,6 +109,8 @@ def plt_det(fig, ax, image, boxes, labels=None, masks=None, colors=None):
     if isinstance(image, torch.Tensor):
         image = torch_tensor_to_ndarray(image) # (H, W) | (C, H, W)
         image = image.transpose((1,2,0)) # (H, W, C)
+
+    boxes = boxes.astype(int)
 
     if isinstance(image, np.ndarray):
         if C == 1: # (H, W) -> (H, W, C)

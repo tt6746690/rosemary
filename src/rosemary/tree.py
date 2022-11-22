@@ -8,6 +8,7 @@ __all__ = [
     "dict_get_list_of_items",
     "re_parse_float",
     "parse_kv_from_string",
+    "latex_escape",
 ]
 
 
@@ -110,3 +111,24 @@ def parse_kv_from_string(s):
             kvs.append((i, segment))
     d = dict(kvs)
     return d
+
+def latex_escape(s):
+    """Return properly escaped string for Latex. """
+    import re
+    m = {
+        '&': r'\&',
+        '%': r'\%',
+        '$': r'\$',
+        '#': r'\#',
+        '_': r'\_',
+        '{': r'\{',
+        '}': r'\}',
+        '~': r'\textasciitilde{}',
+        '^': r'\^{}',
+        '\\': r'\textbackslash{}',
+        '<': r'\textless{}',
+        '>': r'\textgreater{}',
+    }
+    ks = sorted(m.keys(), key=lambda x: -len(x))
+    regex = re.compile('|'.join(re.escape(str(k)) for k in ks))
+    return regex.sub(lambda match: m[match.group()], s)

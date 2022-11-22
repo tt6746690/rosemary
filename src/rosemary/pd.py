@@ -91,9 +91,9 @@ def pd_apply_fn_to_list_flattened(fn, df, by, col):
     return dfe[col]
 
 
-def pd_sort_rows_by_avg_ranking(df, metrics_lower_the_better=tuple()):
+def pd_sort_rows_by_avg_ranking(df, metrics_lower_the_better=tuple(), drop_ranking=False):
     """Sort rows of dataframe `df` by average of nuermical columns. """
-    cols = [x for x in df.columns]
+    cols = df.select_dtypes([np.number]).columns
     def is_ascending(x):
         # ascending=True if metrics lower the better
         if isinstance(x,  tuple):
@@ -105,4 +105,6 @@ def pd_sort_rows_by_avg_ranking(df, metrics_lower_the_better=tuple()):
     df = df.copy()
     df.loc[:,'ranking'] = np.array(rankings).mean(0)
     df = df.sort_values('ranking', ascending=True)
+    if drop_ranking:
+        df = df.drop(columns=['ranking'])
     return df
