@@ -12,8 +12,8 @@ __all__ = [
 
 
 def plt_kernel_matrix_one(fig, ax, K, title=None, n_ticks=5,
-                          custom_ticks=True, vmin=None, vmax=None, annotate=False):
-    im = ax.imshow(K, vmin=vmin, vmax=vmax)
+                          custom_ticks=True, vmin=None, vmax=None, annotate=False, cmap='jet'):
+    im = ax.imshow(K, vmin=vmin, vmax=vmax, cmap=cmap)
     ax.set_title(title if title is not None else '')
     fig.colorbar(im, cax=plt_scaled_colobar_ax(ax))
     # custom ticks
