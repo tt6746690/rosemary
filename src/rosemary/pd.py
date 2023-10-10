@@ -108,3 +108,20 @@ def pd_sort_rows_by_avg_ranking(df, metrics_lower_the_better=tuple(), drop_ranki
     if drop_ranking:
         df = df.drop(columns=['ranking'])
     return df
+
+
+def pd_average_col_contains_substr(df, col, substr):
+    """Given dataframe `df`, append a new row containing averages
+        of rows satisfying `row[col].str.contains(substr)`. 
+       Return the original `df` if already averaged. """
+
+    col_val = f'{substr}_avg'
+    if any((df[col]==col_val).tolist()):
+        return df
+
+    filtered_rows = df[df[col].str.contains(substr)]
+    avg_vals = filtered_rows.select_dtypes(include='number').mean()
+    data = {col: [col_val]}
+    for k in avg_vals.index: data[k] = [avg_vals[k]]
+    row = pd.DataFrame(data)
+    return pd.concat([df, row], ignore_index=True)
