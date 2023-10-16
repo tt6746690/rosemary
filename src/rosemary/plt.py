@@ -3,12 +3,29 @@ import matplotlib.pyplot as plt
 
 
 __all__ = [
+    'plt_barplot_add_labels',
     'plt_kernel_matrix_one',
     'plt_scaled_colobar_ax',
     'plt_savefig',
     'plt_slices',
     'plt_det',
 ]
+
+
+def plt_barplot_add_labels(ax, bars):
+    """Add labels on top of the bars.
+        ```
+        bars = ax.bar(xs, ys)
+        plt_barplot_add_labels(ax, bars)
+        ```
+    """
+    for bar in bars:
+        height = bar.get_height()
+        ax.annotate(f'{height:.2f}',
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3),  # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom')
 
 
 def plt_kernel_matrix_one(fig, ax, K, title=None, n_ticks=5,
