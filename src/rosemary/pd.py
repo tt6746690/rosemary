@@ -8,6 +8,7 @@ __all__ = [
     "pd_dataset_label_proportion",
     "pd_apply_fn_to_list_flattened",
     "pd_sort_rows_by_avg_ranking",
+    "pd_average_col_contains_substr",
 ]
 
 def pd_add_colwise_percentage(df):
