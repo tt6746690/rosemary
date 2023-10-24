@@ -111,7 +111,7 @@ def pd_sort_rows_by_avg_ranking(df, metrics_lower_the_better=tuple(), drop_ranki
     return df
 
 
-def pd_average_col_contains_substr(df, col, substr):
+def pd_average_col_contains_substr(df, col, substr, substitute=False):
     """Given dataframe `df`, append a new row containing averages
         of rows satisfying `row[col].str.contains(substr)`. 
        Return the original `df` if already averaged. """
@@ -120,9 +120,20 @@ def pd_average_col_contains_substr(df, col, substr):
     if any((df[col]==col_val).tolist()):
         return df
 
-    filtered_rows = df[df[col].str.contains(substr)]
+    col_contains_substr = df[col].str.contains(substr)
+    if any(col_contains_substr.tolist()) == 0:
+        return df
+    filtered_rows = df[col_contains_substr]
+    if substitute:
+        df = df[~col_contains_substr]
+    data = {col: [col_val+f' (N={len(filtered_rows)})']}
+
+    # copy values from non-number columns of the first matching row
+    for k in df.select_dtypes(exclude='number').columns:
+        if k == col: continue
+        data[k] = [filtered_rows.iloc[0][k]]
     avg_vals = filtered_rows.select_dtypes(include='number').mean()
-    data = {col: [col_val]}
-    for k in avg_vals.index: data[k] = [avg_vals[k]]
+    for k in avg_vals.index:
+        data[k] = [avg_vals[k]]
     row = pd.DataFrame(data)
     return pd.concat([df, row], ignore_index=True)
