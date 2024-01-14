@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 
-def plt_barplot_add_labels(ax, bars):
+def plt_barplot_add_labels(ax, bars, **kwargs):
     """Add labels on top of the bars.
         ```
         bars = ax.bar(xs, ys)
@@ -25,7 +25,9 @@ def plt_barplot_add_labels(ax, bars):
                     xy=(bar.get_x() + bar.get_width() / 2, height),
                     xytext=(0, 3),  # 3 points vertical offset
                     textcoords="offset points",
-                    ha='center', va='bottom')
+                    ha='center',
+                    va='bottom',
+                    **kwargs)
 
 
 def plt_kernel_matrix_one(fig, ax, K, title=None, n_ticks=5,

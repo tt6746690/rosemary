@@ -8,6 +8,7 @@ __all__ = [
     "dict_get_list_of_items",
     "re_parse_float",
     "parse_kv_from_string",
+    "create_string_from_kv",
     "latex_escape",
 ]
 
@@ -103,7 +104,12 @@ def parse_kv_from_string(s):
         if '=' in segment:
             k, v = segment.split('=')
             try:
-                v = float(v)
+                if '.' in v:
+                    v = float(v)
+                else:
+                    v = float(v)
+                    if v.is_integer():
+                        v = int(v)
             except:
                 pass
             kvs.append((k, v))
@@ -111,6 +117,11 @@ def parse_kv_from_string(s):
             kvs.append((i, segment))
     d = dict(kvs)
     return d
+
+
+def create_string_from_kv(d):
+    return '_'.join(f'{k}={v}' for k, v in d.items())
+
 
 def latex_escape(s):
     """Return properly escaped string for Latex. """

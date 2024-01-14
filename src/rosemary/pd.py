@@ -115,12 +115,12 @@ def pd_average_col_contains_substr(df, col, substr, substitute=False):
     """Given dataframe `df`, append a new row containing averages
         of rows satisfying `row[col].str.contains(substr)`. 
        Return the original `df` if already averaged. """
-
+    import re
     col_val = f'{substr}_avg'
     if any((df[col]==col_val).tolist()):
         return df
 
-    col_contains_substr = df[col].str.contains(substr)
+    col_contains_substr = df[col].str.contains(substr, regex=True)
     if any(col_contains_substr.tolist()) == 0:
         return df
     filtered_rows = df[col_contains_substr]
