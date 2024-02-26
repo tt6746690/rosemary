@@ -9,6 +9,7 @@ __all__ = [
     "pd_apply_fn_to_list_flattened",
     "pd_sort_rows_by_avg_ranking",
     "pd_average_col_contains_substr",
+    "pd_describe_all",
 ]
 
 def pd_add_colwise_percentage(df):
@@ -137,3 +138,20 @@ def pd_average_col_contains_substr(df, col, substr, substitute=False):
         data[k] = [avg_vals[k]]
     row = pd.DataFrame(data)
     return pd.concat([df, row], ignore_index=True)
+
+
+def pd_describe_all(df, cols=None):
+    if cols is not None:
+        df = df[cols]
+    # numeric columns
+    numeric_summary = df.describe()
+    print(numeric_summary)
+
+    # categorical columns
+    categorical_counts = {}
+    for column in df.select_dtypes(include='object').columns:
+        categorical_counts[column] = df[column].value_counts(dropna='False')
+        print('----'*20)
+        print(categorical_counts[column])
+
+    return numeric_summary, categorical_counts
