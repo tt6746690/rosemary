@@ -154,7 +154,6 @@ def submit_job_slurm(
                                      stderr=subprocess.PIPE)
                 stdout, stderr = p.communicate()
                 stdout = stdout.decode("utf-8")
-                print(stdout)
                 match = re.search(r"Submitted batch job (\d+)", stdout)
                 job_id = int(match.group(1)) if match else stdout
             except Exception as e:
