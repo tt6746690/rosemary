@@ -2,9 +2,12 @@ import re
 import os
 import subprocess
 import shlex
+import tempfile
+from datetime import datetime
+import uuid
 
 
-shell_scripts_template_slurm = """
+shell_scripts_template = """
 echo "Running on $SLURM_JOB_NODELIST"
 echo "======"
 
@@ -12,7 +15,7 @@ master_addr=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 master_port=10002
 RDZV_ENDPOINT=$master_addr:$master_port
 
-source ~/.profile
+source {profile}
 conda activate {conda_env}
 cd {cwd}
 
@@ -24,7 +27,6 @@ srun {cmd}
 
 [ ! -f "{log_dir}/$SLURM_JOB_ID*.out" ] && mv {log_dir}/$SLURM_JOB_ID*.out {save_dir} ||:
 """
-
 
 
 def multiline_to_singleline(cmd):
@@ -47,6 +49,7 @@ def submit_job_slurm(
     log_path=None,
     test_run=False,
     num_jobs=1,
+    sbatch_dir="/fsx/wpq/.sbatch",
     shell_scripts_modification_fn=None,
 ):
     """
@@ -77,6 +80,7 @@ def submit_job_slurm(
                 log_path=log_path,
                 test_run=test_run,
                 num_jobs=num_jobs,
+                sbatch_dir=sbatch_dir,
                 shell_scripts_modification_fn=shell_scripts_modification_fn) 
             for x in shell_scripts]
 
@@ -87,6 +91,8 @@ def submit_job_slurm(
     if log_path is None:
         log_path = os.path.join(os.getcwd(), '%J.out')
 
+    os.makedirs(sbatch_dir, exist_ok=True)
+    
     log_dir = os.path.dirname(log_path)
     log_filename = os.path.basename(log_path)
     log_filename_noext, ext = log_filename.split('.')
@@ -98,53 +104,67 @@ def submit_job_slurm(
         if num_jobs > 1:
             log_path = os.path.join(
                 log_dir, '.'.join([log_filename_noext+f'_{i+1}:{num_jobs}', ext]))
-            
 
         if shell_scripts_modification_fn is not None:
             shell_scripts_cmd = shell_scripts_modification_fn(shell_scripts) \
                 if i != 0 else shell_scripts
         else:
             shell_scripts_cmd = shell_scripts
-        shell_scripts_cmd = shell_scripts_cmd.strip().split('\n')
-        shell_scripts_cmd = [x for x in shell_scripts_cmd if x != '']
-        shell_scripts_cmd = '; '.join(shell_scripts_cmd)
-        # escape double quotes in `shell_scripts_cmd` to wrap it in a double quote.
-        shell_scripts_cmd = shell_scripts_cmd.replace('"', '\\"') 
-        shell_scripts_cmd = '"' + shell_scripts_cmd + '"'
 
-        sbatch_cmd = f"""
-        sbatch \
-            --job-name={job_name} \
-            --partition={partition} \
-            --nodes={nodes} \
-            --cpus-per-task={num_cpus} \
-            --mem={cpu_mem}gb \
-            --gres=gpu:{num_gpus} \
-            --output={log_path} \
-            --wrap={shell_scripts_cmd} \
-        """
+        sbatch_args = [
+            ('job-name', job_name),
+            ('partition', partition),
+            ('nodes', nodes),
+            ('cpus-per-task', num_cpus),
+            ('mem', f'{cpu_mem}gb'),
+            ('gres', f'gpu:{num_gpus}'),
+            ('output', log_path)
+        ]
+        if i != 0:
+            sbatch_args += [
+                ('dependency', f'afterok:{str(job_id)}'),
+            ]
+        
+        s = "" 
+        s += "#!/bin/bash\n\n"
+        for k, v in sbatch_args:
+            s += f'#SBATCH --{k}={v}\n'
+        s += '\n'
+        s += shell_scripts_cmd
+        
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        random_uuid = uuid.uuid4()
+        sbatch_script_filepath = os.path.join(
+            sbatch_dir,
+            f"{timestamp}_{random_uuid}.sh"
+        )
+        with open(sbatch_script_filepath, 'w') as f:
+            f.write(s)
 
-        sbatch_cmd = multiline_to_singleline(sbatch_cmd)
+        sbatch_cmd = f"sbatch {sbatch_script_filepath}"
         sbatch_cmd = shlex.split(sbatch_cmd)
 
-        if i != 0:
-            sbatch_cmd.extend(["--dependency", f"afterok:{str(job_id)}"])
-            
-        if test_run:
-            job_info = {'args': ' '.join(sbatch_cmd),}
-        else:
+        job_info = {'args': ' '.join(sbatch_cmd), 
+                    # 'sbatch_script': sbatch_script_filepath,
+                   }
+        if test_run is False:
             try:
                 p = subprocess.Popen(sbatch_cmd,
                                      stdout=subprocess.PIPE, 
                                      stderr=subprocess.PIPE)
                 stdout, stderr = p.communicate()
                 stdout = stdout.decode("utf-8")
+                print(stdout)
                 match = re.search(r"Submitted batch job (\d+)", stdout)
                 job_id = int(match.group(1)) if match else stdout
             except Exception as e:
+                print(e)
                 pass
-            job_info = {'args': ' '.join(sbatch_cmd), 'job_id': job_id}
+            job_info.update({
+                'job_id': job_id,
+            })
         info.append(job_info)
     
     return info
+
 
