@@ -144,9 +144,9 @@ def submit_job_slurm(
         sbatch_cmd = f"sbatch {sbatch_script_filepath}"
         sbatch_cmd = shlex.split(sbatch_cmd)
 
-        job_info = {'args': ' '.join(sbatch_cmd), 
-                    # 'sbatch_script': sbatch_script_filepath,
-                   }
+        job_info = {
+            'args': ' '.join(sbatch_cmd),
+        }
         if test_run is False:
             try:
                 p = subprocess.Popen(sbatch_cmd,
