@@ -88,8 +88,6 @@ def submit_job_slurm(
         log_path = os.path.join(os.getcwd(), '%J.out')
     if '.out' not in log_path:
         raise ValueError('log_path must contain ".out"')
-    if log_path is None:
-        log_path = os.path.join(os.getcwd(), '%J.out')
 
     os.makedirs(sbatch_dir, exist_ok=True)
     
@@ -163,7 +161,7 @@ def submit_job_slurm(
                 'job_id': job_id,
             })
         info.append(job_info)
-    
+
     return info
 
 
