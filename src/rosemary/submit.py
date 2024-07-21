@@ -3,17 +3,18 @@ import os
 import subprocess
 import shlex
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
+
 
 
 shell_scripts_template = """
 echo "Running on $SLURM_JOB_NODELIST"
 echo "======"
 
-master_addr=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
-master_port=10002
-RDZV_ENDPOINT=$master_addr:$master_port
+MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+MASTER_PORT=10002
+RDZV_ENDPOINT=$MASTER_ADDR:$MASTER_PORT
 
 source {profile}
 conda activate {conda_env}
@@ -38,6 +39,18 @@ def multiline_to_singleline(cmd):
     return cmd
 
 
+def hours_to_slurm_time(hours):
+    td = timedelta(hours=hours)
+    days = td.days
+    total_seconds = td.seconds
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    # Format as 'DD-HH:MM:SS'
+    base_time = datetime(1, 1, 1, hours, minutes, seconds)
+    s = f"{days:02d}-{base_time.strftime('%H:%M:%S')}"
+    return s
+
+
 def submit_job_slurm(
     shell_scripts: str,
     job_name='wpq-job',
@@ -46,6 +59,7 @@ def submit_job_slurm(
     num_cpus=1,
     cpu_mem=3,
     num_gpus=0,
+    time=24,
     log_path=None,
     test_run=False,
     num_jobs=1,
@@ -77,6 +91,7 @@ def submit_job_slurm(
                 num_cpus=num_cpus,
                 cpu_mem=cpu_mem,
                 num_gpus=num_gpus,
+                time=time,
                 log_path=log_path,
                 test_run=test_run,
                 num_jobs=num_jobs,
@@ -116,7 +131,8 @@ def submit_job_slurm(
             ('cpus-per-task', num_cpus),
             ('mem', f'{cpu_mem}gb'),
             ('gres', f'gpu:{num_gpus}'),
-            ('output', log_path)
+            ('time', hours_to_slurm_time(time)),
+            ('output', log_path),
         ]
         if i != 0:
             sbatch_args += [

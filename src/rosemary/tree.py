@@ -102,7 +102,7 @@ def parse_kv_from_string(s):
     kvs = []
     for i, segment in enumerate(s.split('_')):
         if '=' in segment:
-            k, v = segment.split('=')
+            k, v = segment.split('=', 1)
             try:
                 if '.' in v:
                     v = float(v)
@@ -120,7 +120,13 @@ def parse_kv_from_string(s):
 
 
 def create_string_from_kv(d):
-    return '_'.join(f'{k}={v}' for k, v in d.items())
+    l = []
+    for k, v in d.items():
+        if isinstance(v, list):
+            v = str(list(v)).replace(', ', ',').replace("'", "")
+        s = f'{k}={v}'
+        l.append(s)
+    return '_'.join(l)
 
 
 def latex_escape(s):
