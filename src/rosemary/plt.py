@@ -47,9 +47,10 @@ def plt_kernel_matrix_one(fig, ax, K, title=None, n_ticks=5,
         ax.set_xticklabels(ticks)
         ax.set_yticklabels(ticks)
     if annotate:
+        annotate_str_template = annotate if isinstance(annotate, str) else '{:.2f}'
         for i in range(K.shape[0]):
             for j in range(K.shape[1]):
-                ax.annotate(f'{K[i,j]:.2f}', xy=(j, i),
+                ax.annotate(annotate_str_template.format(K[i,j]), xy=(j, i),
                             horizontalalignment='center',
                             verticalalignment='center')
     return fig, ax
