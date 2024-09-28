@@ -46,7 +46,7 @@ def metrics_binary_classification(label, score, threshold=.5, nll_class_weights=
 
     metrics = {}
     metrics['N'] = len(label)
-    metrics['nll'] = log_loss_fp32(label, score)
+    metrics['nll'] = log_loss_fp32(label, score, labels=np.arange(2))
     if nll_class_weights is not None:
         metrics['nll_weighted'] = log_loss_fp32(
             label, score, sample_weight=nll_class_weights[label.astype(np.int)])
@@ -55,7 +55,10 @@ def metrics_binary_classification(label, score, threshold=.5, nll_class_weights=
         label, pred, average='macro', zero_division=0)
     metrics['precision_avg'] = average_precision_score(
         label, score, average='macro')
-    metrics['auroc'] = roc_auc_score(label, score)
+    try:
+        metrics['auroc'] = roc_auc_score(label, score)
+    except:
+        metrics['auroc'] = 0.
     metrics['mse'] = mean_squared_error(label, pred)
     metrics['brier_score'] = brier_score_loss(label, score)
 
