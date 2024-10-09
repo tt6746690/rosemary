@@ -54,7 +54,7 @@ def hours_to_slurm_time(hours):
 def submit_job_slurm(
     shell_scripts: str,
     job_name='wpq-job',
-    partition='learnai4p',
+    partition='learnai',
     nodes=1,
     num_cpus=1,
     cpu_mem=3,
@@ -75,10 +75,10 @@ def submit_job_slurm(
         from rosemary.submit import submit_job_slurm
 
         # submit simple bash commands, with minimal resources
-        submit_job_slurm('echo hello world', partition='learnai4p')
+        submit_job_slurm('echo hello world', partition='learnai')
 
         # test job chaining
-        out = submit_job_slurm('echo foo; echo bar', partition='learnai4p', test_run=False, num_jobs=2, job_name='test.out', shell_scripts_modification_fn=lambda x: x.replace('bar', 'baz'))
+        out = submit_job_slurm('echo foo; echo bar', partition='learnai', test_run=False, num_jobs=2, job_name='test.out', shell_scripts_modification_fn=lambda x: x.replace('bar', 'baz'))
         ```
     """
     if isinstance(shell_scripts, list):
@@ -105,6 +105,11 @@ def submit_job_slurm(
         raise ValueError('log_path must contain ".out"')
 
     os.makedirs(sbatch_dir, exist_ok=True)
+    
+    # unset `SLURM_MEM_PER_CPU` since `--men` sets `SLURM_MEM_PER_NODE`.
+    # srun: fatal: SLURM_MEM_PER_CPU, SLURM_MEM_PER_GPU, and SLURM_MEM_PER_NODE are mutually exclusive.
+    for k in ['SLURM_MEM_PER_CPU']:
+        if k in os.environ: os.environ.pop(k)
     
     log_dir = os.path.dirname(log_path)
     log_filename = os.path.basename(log_path)
