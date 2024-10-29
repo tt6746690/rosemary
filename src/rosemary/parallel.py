@@ -16,7 +16,9 @@ def joblib_parallel_process(fn, iterable, n_jobs, prefer=None, use_tqdm=False):
     delayed_fn = delayed(fn)
     if use_tqdm:
         from tqdm import tqdm
-        iterable = tqdm(list(iterable))
-    tasks = iter(delayed_fn(x) for x in iterable)
-    result = parallel_execute(tasks)
+        try:
+            iterable = tqdm(iterable, total=len(iterable))
+        except TypeError:
+            iterable = tqdm(list(iterable))
+    result = parallel_execute(delayed_fn(x) for x in iterable)
     return result
