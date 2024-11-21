@@ -63,6 +63,7 @@ def submit_job_slurm(
     log_path=None,
     test_run=False,
     num_jobs=1,
+    exclude=None,
     sbatch_dir="/fsx/wpq/.sbatch",
     shell_scripts_modification_fn=None,
 ):
@@ -95,6 +96,7 @@ def submit_job_slurm(
                 log_path=log_path,
                 test_run=test_run,
                 num_jobs=num_jobs,
+                exclude=exclude,
                 sbatch_dir=sbatch_dir,
                 shell_scripts_modification_fn=shell_scripts_modification_fn) 
             for x in shell_scripts]
@@ -129,16 +131,26 @@ def submit_job_slurm(
         else:
             shell_scripts_cmd = shell_scripts
 
-        sbatch_args = [
+        sbatch_args = []
+        sbatch_args += [
             ('job-name', job_name),
             ('partition', partition),
             ('nodes', nodes),
             ('cpus-per-task', num_cpus),
             ('mem', f'{cpu_mem}gb'),
-            ('gres', f'gpu:{num_gpus}'),
+        ]
+        if num_gpus > 0:
+            sbatch_args += [
+                ('gres', f'gpu:{num_gpus}'),
+            ]
+        sbatch_args += [
             ('time', hours_to_slurm_time(time)),
             ('output', log_path),
         ]
+        if exclude is not None:
+            sbatch_args += [
+                ('exclude', exclude),
+            ]
         if i != 0:
             sbatch_args += [
                 ('dependency', f'afterok:{str(job_id)}'),
@@ -147,7 +159,8 @@ def submit_job_slurm(
         s = "" 
         s += "#!/bin/bash\n\n"
         for k, v in sbatch_args:
-            s += f'#SBATCH --{k}={v}\n'
+            if v is not None:
+                s += f'#SBATCH --{k}={v}\n'
         s += '\n'
         s += shell_scripts_cmd
         

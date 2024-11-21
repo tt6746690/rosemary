@@ -10,6 +10,8 @@ __all__ = [
     "pd_sort_rows_by_avg_ranking",
     "pd_average_col_contains_substr",
     "pd_describe_all",
+    "pd_unflatten_multiindex_columns",
+    "pd_flatten_multiindex_columns",
 ]
 
 def pd_add_colwise_percentage(df):
@@ -155,3 +157,32 @@ def pd_describe_all(df, cols=None):
         print(categorical_counts[column])
 
     return numeric_summary, categorical_counts
+
+
+def pd_unflatten_multiindex_columns(df, sep='/'):
+    """Convert DataFrame to MultiIndex columns, e.g., 'Metrics/Avg' -> ('Metrics', 'Avg') """
+    # Split the flattened column names
+    multiindex_tuples = [col.split(sep) if sep in col else (col, '') for col in df.columns]
+    # Create MultiIndex
+    multiindex = pd.MultiIndex.from_tuples(multiindex_tuples)
+    # Apply MultiIndex to columns
+    df = df.copy()
+    df.columns = multiindex
+    return df
+
+
+def pd_flatten_multiindex_columns(df, sep='/'):
+    """Convert DataFrame with MultiIndex columns to flattened column names, e.g., ('Metrics', 'Avg') -> 'Metrics/Avg """
+    # Create new column names
+    new_columns = []
+    for col in df.columns:
+        # Handle empty string in second level
+        if col[1] == '':
+            new_columns.append(col[0])
+        else:
+            new_columns.append(f"{col[0]}{sep}{col[1]}")
+    
+    # Create new DataFrame with flattened columns
+    df = df.copy()
+    df.columns = new_columns
+    return df
