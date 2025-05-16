@@ -16,6 +16,7 @@ from .tree import *
 from .parallel import *
 from .config import *
 from .submit import *
+from .lm_apis import *
 
 try:
     from .torch_transform import *
